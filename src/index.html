@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src http://127.0.0.1:* ws://127.0.0.1:*;">
+    <title>JARVIS · Local Assistant</title>
+    <link rel="stylesheet" href="tokens.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="command-center.css">
+  </head>
+  <body data-skin="classic">
+    <div id="classic-root">
+    <div class="ambient-grid"></div>
+    <div class="scanlines"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <div class="mini-core"><i></i></div>
+        <div><strong>JARVIS</strong><span>Private local assistant</span></div>
+      </div>
+      <div class="system-state"><i id="status-dot"></i><span id="system-status">LOCAL CORE STARTING</span></div>
+      <div class="top-actions">
+        <button id="modules-button" class="hud-button"><b>＋</b> Modules</button>
+        <button id="defense-button" class="hud-button" title="Defense mode — every camera live, one key to exit"><b>⛨</b> Defense</button>
+        <button id="layout-button" class="hud-button"><b>⌘</b> Edit layout</button>
+        <button id="settings-button" class="icon-button" title="Settings">⚙</button>
+        <button class="window-button" data-window="minimize">—</button>
+        <button class="window-button" data-window="maximize">□</button>
+        <button class="window-button close" data-window="close">×</button>
+      </div>
+    </header>
+
+    <main id="workspace" class="workspace">
+      <section class="jarvis-stage" id="jarvis-stage">
+        <div class="stage-label left"><span>Operating mode</span><b>Local · Private</b></div>
+        <div class="stage-label right"><span>Active project</span><b id="active-project">GENERAL</b></div>
+        <canvas id="hologram" aria-label="Animated JARVIS holographic sphere"></canvas>
+        <div class="central-copy">
+          <span id="core-kicker">AWAITING DIRECTIVE</span>
+          <strong id="core-state">READY</strong>
+          <div class="audio-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <p id="orb-reply" class="orb-reply" role="status" hidden></p>
+        <div id="search-flight" class="search-flight" aria-hidden="true">
+          <span class="flight-line line-one"></span><span class="flight-line line-two"></span>
+          <span class="flight-line line-three"></span><span class="flight-line line-four"></span>
+        </div>
+      </section>
+
+      <section id="module-layer" class="module-layer">
+        <article class="module" data-module="tasks">
+          <header class="module-header drag-handle"><div><span>Work queue</span><h2>Today’s tasks</h2></div><div class="module-actions"><button data-maximize title="Maximize">⛶</button><button data-collapse>−</button><button data-hide>×</button></div></header>
+          <div class="module-content">
+            <form id="quick-task-form" class="inline-entry"><input id="quick-task-input" placeholder="Add something you need to finish…"><button>ADD</button></form>
+            <div class="task-filters"><button class="active" data-task-filter="open">OPEN</button><button data-task-filter="today">TODAY</button><button data-task-filter="project">PROJECT</button><button data-task-filter="all">ALL</button><span id="task-count">0 OPEN</span></div>
+            <div id="task-list" class="task-list"></div>
+          </div>
+          <i class="resize-handle"></i>
+        </article>
+
+        <article class="module hidden-module" data-module="file-explorer">
+          <header class="module-header drag-handle"><div><span>Live search</span><h2>File explorer</h2></div><div class="module-actions"><button data-maximize title="Maximize">⛶</button><button id="file-collapse">−</button><button data-hide>×</button></div></header>
+          <div class="module-content explorer-content">
+            <div class="explorer-toolbar">
+              <button id="file-up" title="Up one folder">↑</button>
+              <button id="file-pin" title="Pin or unpin this folder">☆</button>
+              <button id="file-watch" title="Watch this folder and notify on changes">👁</button>
+              <div id="file-breadcrumb" class="breadcrumb"><span>APPROVED LOCATIONS</span></div>
+              <button id="file-close-search">REFORM CORE</button>
+            </div>
+            <div id="search-visual" class="search-visual">
+              <div class="path-tree"><i></i><i></i><i></i><i></i><i></i></div>
+              <div><span id="scan-label">WAITING FOR A FILE REQUEST</span><strong id="scan-path">Say “Hey Jarvis, find…”</strong></div>
+              <b id="scan-counter">0 LOCATIONS</b>
+            </div>
+            <div class="file-table-head"><span>NAME</span><span>MODIFIED</span><span>SIZE</span></div>
+            <div id="file-browser-list" class="file-browser-list"></div>
+          </div>
+          <i class="resize-handle"></i>
+        </article>
+
+        <article class="module hidden-module" data-module="night-shift">
+          <header class="module-header drag-handle"><div><span>While you sleep</span><h2>Night shift</h2></div><div class="module-actions"><button data-maximize title="Maximize">⛶</button><button data-collapse>−</button><button data-hide>×</button></div></header>
+          <div class="module-content">
+            <div class="nightshift-counter"><b id="nightshift-done">0</b><span>jobs done, lifetime</span></div>
+            <div id="nightshift-jobs" class="nightshift-jobs"></div>
+            <p id="nightshift-hint" class="nightshift-hint">Switch the night shift on in Settings to start.</p>
+          </div>
+          <i class="resize-handle"></i>
+        </article>
+
+        <article class="module hidden-module" data-module="performance">
+          <header class="module-header drag-handle"><div><span>Telemetry</span><h2>PC performance</h2></div><div class="module-actions"><button data-maximize title="Maximize">⛶</button><button data-collapse>−</button><button data-hide>×</button></div></header>
+          <div class="module-content performance-grid">
+            <div class="meter" id="cpu-meter"><b id="cpu-value">0</b><span>% CPU</span></div>
+            <div class="meter" id="ram-meter"><b id="ram-value">0</b><span>% MEMORY</span></div>
+            <dl><dt>GPU</dt><dd id="gpu-value">RTX 5060 · 8 GB</dd><dt>RAM</dt><dd id="ram-detail">32 GB</dd><dt>UPTIME</dt><dd id="uptime-value">—</dd></dl>
+          </div>
+          <i class="resize-handle"></i>
+        </article>
+
+        <article class="module hidden-module" data-module="memory">
+          <header class="module-header drag-handle"><div><span>Knowledge</span><h2>Memory</h2></div><div class="module-actions"><button data-maximize title="Maximize">⛶</button><button data-collapse>−</button><button data-hide>×</button></div></header>
+          <div class="module-content"><form id="memory-form" class="inline-entry"><input id="memory-input" placeholder="Remember something…"><button>STORE</button></form><input id="memory-search" class="memory-search" placeholder="Search memories…"><div id="memory-list" class="memory-list"></div></div>
+          <i class="resize-handle"></i>
+        </article>
+
+        <article class="module hidden-module" data-module="projects">
+          <header class="module-header drag-handle"><div><span>Context</span><h2>Projects</h2></div><div class="module-actions"><button data-maximize title="Maximize">⛶</button><button data-collapse>−</button><button data-hide>×</button></div></header>
+          <div class="module-content project-list">
+            <button data-project="general" class="active"><i></i><span>GENERAL</span><b>PERSONAL</b></button>
+            <button data-project="anvil"><i></i><span>ANVIL</span><b>BUSINESS</b></button>
+            <button data-project="the bench"><i></i><span>THE BENCH</span><b>MARKETS</b></button>
+            <button data-project="adamscraft"><i></i><span>ADAMSCRAFT</span><b>BUILD</b></button>
+          </div>
+          <i class="resize-handle"></i>
+        </article>
+
+        <article class="module hidden-module" data-module="activity">
+          <header class="module-header drag-handle"><div><span>Audit</span><h2>Recent activity</h2></div><div class="module-actions"><button data-maximize title="Maximize">⛶</button><button data-collapse>−</button><button data-hide>×</button></div></header>
+          <div class="module-content"><div id="activity-list" class="activity-list"></div></div>
+          <i class="resize-handle"></i>
+        </article>
+
+        <article class="module hidden-module" data-module="terminal">
+          <header class="module-header drag-handle"><div><span>Console</span><h2>Terminal</h2></div><div class="module-actions"><button type="button" id="terminal-clear" class="term-clear" title="Clear the console">CLR</button><button type="button" id="terminal-full" class="term-clear" title="Take over the whole screen (Esc to exit)">FULL</button><button data-maximize title="Maximize">⛶</button><button data-collapse>−</button><button data-hide>×</button></div></header>
+          <div class="module-content term-body">
+            <canvas id="terminal-rain" class="term-rain" aria-hidden="true"></canvas>
+            <div id="terminal-log" class="term-log" role="log" aria-live="polite" aria-label="JARVIS console"></div>
+            <form id="terminal-form" class="term-input-row" autocomplete="off">
+              <span class="term-prompt" aria-hidden="true">&gt;_</span>
+              <input id="terminal-input" class="term-input" type="text" placeholder="Talk to JARVIS…" aria-label="Console command" />
+            </form>
+          </div>
+          <i class="resize-handle"></i>
+        </article>
+
+        <article class="module hidden-module" data-module="quick-commands">
+          <header class="module-header drag-handle"><div><span>Shortcuts</span><h2>Quick commands</h2></div><div class="module-actions"><button data-maximize title="Maximize">⛶</button><button data-collapse>−</button><button data-hide>×</button></div></header>
+          <div class="module-content quick-grid">
+            <button data-command="Morning briefing"><span>START</span>BRIEFING</button>
+            <button data-command="Look at my screen"><span>VIEW</span>MY SCREEN</button>
+            <button data-command="Open Chrome"><span>OPEN</span>CHROME</button>
+            <button data-command="Open my Anvil workspace"><span>LOAD</span>ANVIL</button>
+            <button data-command="Show my tasks"><span>SHOW</span>TASKS</button>
+            <button data-command="Activate focus mode"><span>ENTER</span>FOCUS MODE</button>
+            <button data-command="Summarize my latest report"><span>READ</span>LATEST REPORT</button>
+            <button data-command="Organize my Downloads"><span>ORGANIZE</span>DOWNLOADS</button>
+          </div>
+          <i class="resize-handle"></i>
+        </article>
+
+        <article class="module hidden-module" data-module="document-viewer">
+          <header class="module-header drag-handle"><div><span>Document intelligence</span><h2 id="document-title">DOCUMENT SUMMARY</h2></div><div class="module-actions"><button id="copy-document-output" title="Copy summary">COPY</button><button data-maximize title="Maximize">⛶</button><button data-collapse>−</button><button data-hide>×</button></div></header>
+          <div class="module-content document-content"><pre id="document-output">Ask JARVIS to read or summarize a document.</pre></div>
+          <i class="resize-handle"></i>
+        </article>
+
+        <article class="module hidden-module" data-module="cameras">
+          <header class="module-header drag-handle"><div><span>Surveillance</span><h2>Cameras</h2></div><div class="module-actions"><button id="camera-add-toggle" title="Connect a camera in Settings"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>ADD</button><button data-maximize title="Maximize">⛶</button><button data-collapse>−</button><button data-hide>×</button></div></header>
+          <div class="module-content cameras-content">
+            <div id="jr-panel" hidden>
+              <span id="jr-presence" class="jr-presence-dot"></span>
+              <span id="jr-presence-label">Checking…</span>
+              <button id="jr-call-button" type="button">📞 CALL</button>
+            </div>
+            <div id="camera-systems" class="camera-systems"></div>
+            <div id="camera-grid" class="camera-grid"><p class="camera-empty">No cameras yet. Select ＋ ADD to connect one.</p></div>
+          </div>
+          <i class="resize-handle"></i>
+        </article>
+
+        <article class="module hidden-module" data-module="browser">
+          <header class="module-header drag-handle"><div><span>The web</span><h2>Browser</h2></div><div class="module-actions"><button data-maximize title="Maximize">⛶</button><button data-collapse>−</button><button data-hide>×</button></div></header>
+          <div class="module-content browser-content">
+            <div id="browser-tabs" class="browser-tabs"><button id="browser-new-tab" type="button" title="New tab">＋</button></div>
+            <form id="browser-address-form" class="browser-address">
+              <button type="button" id="browser-back" title="Back" disabled>‹</button>
+              <button type="button" id="browser-forward" title="Forward" disabled>›</button>
+              <button type="button" id="browser-reload" title="Reload">⟳</button>
+              <input id="browser-address" placeholder="Search or type an address" autocomplete="off">
+            </form>
+            <div id="browser-pages" class="browser-pages"><p class="browser-empty" id="browser-empty">Open a tab to start surfing. Pages live in their own walled-off session — they can't touch JARVIS.</p></div>
+          </div>
+          <i class="resize-handle"></i>
+        </article>
+      </section>
+
+      <div id="autonomy-cards"></div>
+
+      <section class="response-dock" data-module="command">
+        <button id="dock-close" class="dock-close" type="button" title="Close the command bar — you can still talk to JARVIS" aria-label="Close the command bar">×</button>
+        <div class="response-line"><span>JARVIS</span><p id="jarvis-response">Core systems are coming online.</p><button id="ai-stop" class="ai-stop" type="button" title="Stop this response">■ STOP</button></div>
+        <form id="command-form" class="command-form">
+          <button id="mic-button" type="button" class="mic-button" title="Push to talk">
+            <svg viewBox="0 0 24 24"><path d="M12 15.5a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5.5a4 4 0 0 0 4 4Zm-1-9.5a1 1 0 0 1 2 0v5.5a1 1 0 1 1-2 0V6Zm7.5 5a1 1 0 0 1 1 1 7.5 7.5 0 0 1-6.5 7.43V22h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-2.57A7.5 7.5 0 0 1 4.5 12a1 1 0 1 1 2 0 5.5 5.5 0 1 0 11 0 1 1 0 0 1 1-1Z"/></svg>
+          </button>
+          <span class="prompt">›_</span>
+          <input id="command-input" autocomplete="off" placeholder="Type a command or say “Hey Jarvis”…">
+          <button type="submit" class="execute-button">EXECUTE ↵</button>
+        </form>
+        <div class="voice-line"><i id="voice-dot"></i><span id="voice-status">CHECKING LOCAL VOICE</span></div>
+      </section>
+    </main>
+
+    <!-- DEFENSE MODE: the situation board. Not a module — a posture. The real
+         #camera-grid node is moved into the wall on entry and moved home on
+         exit, so there is exactly one set of camera streams. -->
+    <section id="defense-board" class="defense-board" hidden>
+      <header class="defense-banner">
+        <span class="defense-orb-slot"><canvas id="defense-orb" aria-label="JARVIS — defense sentinel"></canvas></span>
+        <span id="defense-banner-label">DEFENSE MODE</span>
+        <button id="defense-exit" type="button" title="Exit defense mode">ESC TO EXIT</button>
+      </header>
+      <div class="defense-body">
+        <div id="defense-wall" class="defense-wall"></div>
+        <aside class="defense-rail">
+          <div class="defense-rail-block">
+            <h3>ACTIVE ALERT</h3>
+            <p id="defense-alert">No active weather alert.</p>
+            <p id="defense-alert-instruction" hidden></p>
+          </div>
+          <div class="defense-rail-block">
+            <h3>LOCAL HEADLINES</h3>
+            <ul id="defense-headlines"><li class="defense-none">No headlines configured. Add RSS feeds in Settings → CAMERAS.</li></ul>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- The announce-and-wave-off card for automatic entries. -->
+    <div id="defense-pending" class="defense-pending" hidden>
+      <strong id="defense-pending-reason">Entering defense mode</strong>
+      <span id="defense-pending-count">15</span>
+      <button id="defense-wave-off" type="button">WAVE OFF</button>
+    </div>
+    </div><!-- /#classic-root -->
+
+    <div id="cc-root">
+      <header class="topbar">
+        <div class="brand"><span class="brand-mark"><i></i><i></i><i></i></span><div><strong>J.A.R.V.I.S.</strong><small>JUST A RATHER VERY INTELLIGENT SYSTEM</small></div></div>
+        <div class="top-metrics"><span><small>CPU</small><b id="cc-cpu-top">--%</b></span><span><small>GPU</small><b id="cc-gpu-top">--%</b></span><span><small>MEM</small><b id="cc-mem-top">--%</b></span><span><small>NET</small><b class="online">ONLINE</b></span><span><small>BRAIN</small><b id="cc-brain">LOCAL</b></span></div>
+        <div class="cc-top-right">
+          <div class="clock"><strong id="cc-time">--:--</strong><small id="cc-date">SYSTEM CLOCK</small></div>
+          <div class="cc-actions">
+            <button id="cc-settings" class="cc-icon tip-below" data-tip="Settings — switch skin, voice, folders" aria-label="Settings">⚙</button>
+            <button class="cc-icon tip-below" data-window="minimize" data-tip="Minimize" aria-label="Minimize">—</button>
+            <button class="cc-icon tip-below" data-window="maximize" data-tip="Maximize" aria-label="Maximize">▢</button>
+            <button class="cc-icon cc-close tip-below" data-window="close" data-tip="Close" aria-label="Close">✕</button>
+          </div>
+        </div>
+      </header>
+
+      <nav class="mode-switch"><button data-cc-mode="command" class="active tip-below" data-tip="Full dashboard">COMMAND</button><button data-cc-mode="focus" class="tip-below" data-tip="Dim panels, enlarge the core">FOCUS</button><button data-cc-mode="orb" class="tip-below" data-tip="Minimize to the floating orb">ORB</button></nav>
+
+      <div class="workspace">
+        <aside class="column">
+          <section class="panel"><div class="panel-head"><div><span>01 / SYSTEM</span><h2>PERFORMANCE</h2></div><div class="panel-dots"><i></i><i></i><i></i></div></div><div class="panel-body"><div class="meter-row"><div class="meter" id="cc-meter-cpu"><strong id="cc-cpu"><small>%</small></strong><span>CPU</span></div><div class="meter" id="cc-meter-ram"><strong id="cc-ram"><small>%</small></strong><span>RAM</span></div><div class="meter" id="cc-meter-gpu"><strong id="cc-gpu"><small>%</small></strong><span>GPU</span></div></div><div class="telemetry"><span>GPU <b id="cc-gpu-name">—</b></span><span>UPTIME <b id="cc-uptime">—</b></span></div></div></section>
+          <section class="panel"><div class="panel-head"><div><span>02 / PROJECTS</span><h2>ACTIVE WORKSPACES</h2></div><div class="panel-dots"><i></i><i></i><i></i></div></div><div class="panel-body" id="cc-projects"></div></section>
+          <section class="panel"><div class="panel-head"><div><span>03 / MEMORY</span><h2>TODAY'S TASKS</h2></div><div class="panel-dots"><i></i><i></i><i></i></div></div><div class="panel-body" id="cc-tasks"></div></section>
+        </aside>
+
+        <section class="core-stage">
+          <div class="core-heading"><span>NEURAL INTERFACE</span><i></i><b>CORE 01</b></div>
+          <button id="cc-core" aria-label="Activate JARVIS"><span class="ring ring-outer"></span><span class="ring ring-ticks"></span><span class="ring ring-mid"></span><span class="ring ring-data"><b>01</b><b>17</b><b>46</b><b>92</b></span><span class="core-orb"><i></i><b></b></span><span class="cross-x"></span><span class="cross-y"></span></button>
+          <div class="core-status"><span class="state-pip"></span><small>CURRENT STATE</small><strong id="cc-state">STANDBY</strong><p id="cc-state-message">All systems ready</p></div>
+          <div class="waveform" id="cc-waveform"></div>
+          <form class="command" id="cc-command-form"><span>›</span><input id="cc-command-input" placeholder="TYPE A COMMAND OR SAY “HEY JARVIS”" autocomplete="off"><button type="submit">EXECUTE</button></form>
+          <div class="dock"><button data-cc-action="voice" data-tip="Push to talk"><i>◉</i><span>VOICE</span></button><button data-cc-action="search" data-tip="Search your files"><i>⌕</i><span>SEARCH</span></button><button data-cc-action="vision" data-tip="Look at my screen"><i>⌾</i><span>VISION</span></button><button data-cc-action="note" data-tip="Save a quick note"><i>＋</i><span>NOTE</span></button><button data-cc-action="minimize" data-tip="Minimize to the orb"><i>◇</i><span>MINIMIZE</span></button></div>
+        </section>
+
+        <aside class="column">
+          <section class="panel"><div class="panel-head"><div><span>04 / SURVEILLANCE</span><h2>CAMERAS</h2></div><div class="panel-dots"><i></i><i></i><i></i></div></div><div class="panel-body" id="cc-cameras"><p class="cc-empty">No cameras configured.</p></div></section>
+          <section class="panel"><div class="panel-head"><div><span>05 / LOG</span><h2>ACTIVITY TIMELINE</h2></div><div class="panel-dots"><i></i><i></i><i></i></div></div><div class="panel-body activity" id="cc-activity"></div></section>
+        </aside>
+      </div>
+
+      <div class="vision-alert" id="cc-vision-alert"><i></i> SCREEN VISION ACTIVE <button id="cc-disable-vision">DISABLE</button></div>
+      <div class="cc-overlay" id="cc-doc-overlay" hidden><div class="cc-overlay-card"><div class="cc-overlay-head"><b id="cc-doc-title">DOCUMENT</b><button type="button" id="cc-doc-close">×</button></div><div class="cc-overlay-body" id="cc-doc-body"></div></div></div>
+      <footer><span>JARVIS CORE v1.0.0</span><i>ENCRYPTED LOCAL MEMORY</i><span>ALL SYSTEMS NOMINAL</span></footer>
+    </div><!-- /#cc-root -->
+
+    <aside id="module-drawer" class="module-drawer">
+      <header><div><span>INTERFACE</span><h2>MODULE LIBRARY</h2></div><button id="close-modules">×</button></header>
+      <p>Add only what you need. Drag and resize modules while Edit Layout is active.</p>
+      <div id="module-options" class="module-options">
+        <button data-toggle-module="tasks"><i>✓</i><span><b>Today’s Tasks</b><small>Work queue and reminders</small></span></button>
+        <button data-toggle-module="night-shift"><i></i><span><b>Night Shift</b><small>Jobs JARVIS runs while you sleep</small></span></button>
+        <button data-toggle-module="file-explorer"><i></i><span><b>File Explorer</b><small>Browse and watch live searches</small></span></button>
+        <button data-toggle-module="performance"><i></i><span><b>PC Performance</b><small>CPU, memory, and GPU</small></span></button>
+        <button data-toggle-module="memory"><i></i><span><b>Memory</b><small>Saved notes and instructions</small></span></button>
+        <button data-toggle-module="projects"><i></i><span><b>Projects</b><small>Switch working context</small></span></button>
+        <button data-toggle-module="activity"><i></i><span><b>Activity</b><small>Recent completed commands</small></span></button>
+        <button data-toggle-module="quick-commands"><i></i><span><b>Quick Commands</b><small>One-click actions</small></span></button>
+        <button data-toggle-module="document-viewer"><i></i><span><b>Document Viewer</b><small>Full summaries and document analysis</small></span></button>
+        <button data-toggle-module="terminal"><i></i><span><b>Terminal</b><small>Watch JARVIS think, and type to him</small></span></button>
+        <button data-toggle-module="cameras"><i></i><span><b>Cameras</b><small>Live view and snapshots from your security cameras</small></span></button>
+        <button data-toggle-module="command"><i></i><span><b>Command Bar</b><small>Type to JARVIS. Close it and just speak to him instead</small></span></button>
+      </div>
+      <button id="reset-layout" class="drawer-reset">RESET DEFAULT LAYOUT</button>
+    </aside>
+
+    <dialog id="settings-modal" class="settings-modal">
+      <form id="settings-form">
+        <header><div><span>LOCAL CONFIGURATION</span><h2>JARVIS SETTINGS</h2></div><button type="button" data-close-settings>×</button></header>
+        <nav id="settings-tabs" class="settings-tabs" role="tablist" aria-label="Settings sections"></nav>
+        <div class="settings-grid">
+          <section class="voice-setup-card" data-tab="general">
+            <h3>FREE LOCAL VOICE</h3>
+            <div class="setup-status"><i id="local-voice-light"></i><div><b id="local-voice-title">CHECKING INSTALLATION</b><span id="local-voice-detail">No API key or credits required.</span></div></div>
+            <button type="button" id="install-local-voice" class="primary-action">INSTALL / REPAIR LOCAL VOICE</button>
+            <button type="button" id="open-voice-diagnostics" class="outline-action">VOICE DIAGNOSTICS</button>
+            <small id="voice-install-note">This installs the wake word and offline speech recognition directly on your laptop.</small>
+          </section>
+          <section data-tab="brains">
+            <h3>LOCAL BRAIN</h3>
+            <div class="setup-status"><i id="ollama-light"></i><div><b id="ollama-title">CHECKING OLLAMA</b><span id="ollama-detail">No API key or credits required.</span></div></div>
+            <label>MODEL SIZE<select id="setting-ollama-preset">
+              <option value="qwen3:4b">SMALL · FASTEST · ~3 GB</option>
+              <option value="qwen3:8b">BALANCED · RECOMMENDED · ~5 GB</option>
+              <option value="qwen3:14b">ADVANCED · NEEDS 10+ GB OR RUNS SLOW</option>
+              <option value="custom">CUSTOM MODEL NAME</option>
+            </select></label>
+            <label>OLLAMA MODEL<input id="setting-ollama-model" value="qwen3:8b"></label>
+            <button type="button" id="connect-ollama" class="primary-action">CONNECT / REPAIR OLLAMA</button>
+            <button type="button" id="get-ollama" class="outline-action">INSTALL OLLAMA FOR WINDOWS</button>
+            <small>File search, tasks, and commands work even without Ollama. Ollama adds basic conversation.</small>
+          </section>
+          <section data-tab="brains">
+            <h3>CLOUD BRAIN · OPTIONAL</h3>
+            <div class="setup-status"><i id="cloud-light"></i><div><b id="cloud-title">NOT CONNECTED</b><span id="cloud-detail">Recommended for slower GPUs. Uses separate prepaid API credits.</span></div></div>
+            <label>BRAIN MODE<select id="setting-ai-mode"><option value="local">LOCAL · OLLAMA ONLY</option><option value="cloud">CLOUD ONLY</option><option value="auto">AUTO · CLOUD WITH OLLAMA BACKUP</option></select></label>
+            <label>OPENAI MODEL<select id="setting-openai-model"><option value="gpt-5-mini">GPT-5 MINI · LOW COST</option><option value="gpt-5.6-luna">GPT-5.6 LUNA · EFFICIENT</option><option value="gpt-5.6-terra">GPT-5.6 TERRA · SMARTER</option></select></label>
+            <label>OPENAI API KEY<input id="setting-openai-key" type="password" placeholder="Paste API key here" autocomplete="off"></label>
+            <button type="button" id="connect-openai" class="primary-action">SAVE KEY & TEST</button>
+            <button type="button" id="remove-openai" class="outline-action">REMOVE KEY</button>
+            <button type="button" id="openai-billing" class="outline-action">ADD PREPAID CREDIT</button>
+            <button type="button" id="openai-keys" class="outline-action">CREATE API KEY</button>
+            <small>Your ChatGPT subscription does not include API usage. The key is encrypted on this computer. Turn off Auto Recharge on the OpenAI billing page if you want a hard prepaid budget.</small>
+          </section>
+          <section data-tab="brains">
+            <h3>CLAUDE BRAIN · OPTIONAL</h3>
+            <div class="setup-status"><i id="claude-light"></i><div><b id="claude-title">NOT CONNECTED</b><span id="claude-detail">Anthropic's Claude models. Uses separate prepaid API credits.</span></div></div>
+            <label>CLAUDE MODEL<select id="setting-anthropic-model">
+              <option value="claude-haiku-4-5-20251001">CLAUDE HAIKU 4.5 · FAST & LOW COST</option>
+              <option value="claude-sonnet-5">CLAUDE SONNET 5 · SMART · RECOMMENDED</option>
+              <option value="claude-opus-4-8">CLAUDE OPUS 4.8 · STRONGEST</option>
+            </select></label>
+            <label>ANTHROPIC API KEY<input id="setting-anthropic-key" type="password" placeholder="Paste API key here" autocomplete="off"></label>
+            <button type="button" id="connect-anthropic" class="primary-action">SAVE KEY &amp; TEST</button>
+            <button type="button" id="remove-anthropic" class="outline-action">REMOVE KEY</button>
+            <button type="button" id="anthropic-keys" class="outline-action">CREATE API KEY</button>
+            <small>When both Claude and OpenAI keys are saved, the Cloud Provider choice below decides which one answers.</small>
+            <label>CLOUD PROVIDER<select id="setting-cloud-provider"><option value="anthropic">CLAUDE</option><option value="openai">OPENAI</option></select></label>
+          </section>
+          <section class="wide-setting" data-tab="cameras">
+            <h3>CONNECT A CAMERA</h3>
+            <label class="toggle-row"><span><b>AI CAMERA ALERTS</b><small>Describe motion and doorbell pictures with the local vision model</small></span><input id="setting-camera-ai" type="checkbox"><i></i></label>
+            <label class="toggle-row"><span><b>CLOUD CAMERA ANALYSIS</b><small>Off by default: allow Cloud Brain to see camera pictures</small></span><input id="setting-camera-cloud" type="checkbox"><i></i></label>
+            <div id="camera-add-form" class="camera-add-form">
+              <div class="camera-brand-tabs"><button type="button" class="active" data-camera-brand="rtsp">LOCAL (RTSP)</button><button type="button" data-camera-brand="blink">BLINK</button><button type="button" data-camera-brand="ring">RING</button><button type="button" data-camera-brand="nest">NEST (ADVANCED)</button></div>
+              <div id="camera-pane-rtsp" class="camera-pane">
+                <p class="camera-hint">Add a local network camera. The address looks like rtsp://username:password@192.168.1.20/stream1 — it is stored encrypted on this computer.</p>
+                <input id="camera-add-name" placeholder="Camera name (Front Door)">
+                <input id="camera-add-url" placeholder="rtsp://username:password@camera-address/stream">
+                <div class="camera-add-actions"><button type="button" id="camera-scan">SCAN NETWORK</button><button type="button" id="camera-add-save">SAVE CAMERA</button><button type="button" id="camera-add-cancel">CLEAR</button></div>
+              </div>
+              <div id="camera-pane-blink" class="camera-pane" hidden>
+                <p class="camera-hint">Opens Blink's own sign-in page in a window. Type your Blink password there — including any code Blink texts or emails you. JARVIS never sees your password; it only keeps the access Blink hands back, encrypted on this computer.</p>
+                <div class="camera-add-actions"><button type="button" id="blink-signin">SIGN IN WITH BLINK</button></div>
+              </div>
+              <div id="camera-pane-ring" class="camera-pane" hidden>
+                <p class="camera-hint">Sign in with your Ring app email and password. Ring will text or email you a code to approve JARVIS. Credentials are stored encrypted on this computer.</p>
+                <input id="ring-email" type="email" placeholder="Ring account email" autocomplete="off">
+                <input id="ring-password" type="password" placeholder="Ring account password" autocomplete="off">
+                <div class="camera-add-actions"><button type="button" id="ring-signin">SIGN IN</button><button type="button" id="ring-cancel">CLEAR</button></div>
+                <div id="ring-code-row" class="camera-add-actions" hidden>
+                  <input id="ring-code" inputmode="numeric" placeholder="Code from Ring">
+                  <button type="button" id="ring-verify">VERIFY CODE</button>
+                </div>
+              </div>
+              <div id="camera-pane-nest" class="camera-pane" hidden>
+                <p class="camera-hint">Advanced setup. Google requires a one-time $5 Device Access registration and a small console setup before Nest cameras can connect. In the Google console, create a Device Access project and an OAuth client, then paste the three values below. Nest cameras are live-view only and do not send motion alerts yet.</p>
+                <div class="camera-add-actions"><button type="button" id="nest-console">OPEN GOOGLE CONSOLE</button></div>
+                <input id="nest-project" placeholder="Device Access project ID" autocomplete="off">
+                <input id="nest-client-id" placeholder="OAuth client ID" autocomplete="off">
+                <input id="nest-client-secret" type="password" placeholder="OAuth client secret" autocomplete="off">
+                <div class="camera-add-actions"><button type="button" id="nest-signin">START GOOGLE SIGN-IN</button><button type="button" id="nest-cancel">CLEAR</button></div>
+              </div>
+              <p id="camera-add-status" class="camera-status" role="status"></p>
+            </div>
+            <small>Connected cameras show up in the Cameras module on the main screen — that is where you watch them, take pictures, and arm or disarm. This tab is only for linking them.</small>
+          </section>
+          <section class="wide-setting" data-tab="cameras">
+            <h3>DEFENSE MODE</h3>
+            <p class="camera-hint">When something is wrong, the whole window becomes a situation board: every camera live, the active weather alert, and local headlines. Say “defense mode” or press the ⛨ button. Esc always exits. It watches and tells — it never calls anyone or takes any action.</p>
+            <label>STATE<select id="setting-defense-state"><option value="">CHOOSE A STATE</option></select></label>
+            <label>COUNTY (FOR WEATHER ALERTS)<select id="setting-defense-county"><option value="">CHOOSE A STATE FIRST</option></select></label>
+            <label class="toggle-row"><span><b>ENTER ON SEVERE WEATHER</b><small>A Tornado, Hurricane, Severe Thunderstorm, Flash Flood, or Extreme Wind WARNING for your county proposes defense mode — always announced, 15 seconds to wave off</small></span><input id="setting-defense-weather" type="checkbox"><i></i></label>
+            <label class="toggle-row"><span><b>ENTER ON CAMERA MOTION AT NIGHT WHILE ARMED</b><small>Motion on an armed system during night hours proposes defense mode — same announcement, same wave-off</small></span><input id="setting-defense-camera" type="checkbox"><i></i></label>
+            <div class="defense-feeds">
+              <b class="defense-feeds-title">LOCAL NEWS FEEDS (RSS)</b>
+              <div id="defense-feed-list" class="defense-feed-list"></div>
+              <div class="camera-add-actions">
+                <input id="defense-feed-url" placeholder="https://www.wlox.com/arc/outboundfeeds/rss/category/weather/?outputType=xml" autocomplete="off">
+                <button type="button" id="defense-feed-add">ADD FEED</button>
+              </div>
+            </div>
+            <small>Weather alerts come straight from the National Weather Service — free, official, no account. Defense mode only ever talks to the weather service and the feeds you add here.</small>
+          </section>
+          <section data-tab="general">
+            <h3>BEHAVIOR</h3>
+            <label>YOUR NAME<input id="setting-profile-name" value="User" maxlength="40"></label>
+            <label>ASSISTANT NAME<input id="setting-assistant-name" value="" maxlength="32" placeholder="JARVIS"></label>
+            <label class="toggle-row"><span><b>SPOKEN REPLIES</b><small>Use Windows system voices</small></span><input id="setting-voice" type="checkbox"><i></i></label>
+            <label class="toggle-row"><span><b id="setting-wake-label">WAKE WORD</b><small>Always-listening local wake word</small></span><input id="setting-wake" type="checkbox"><i></i></label>
+            <label class="toggle-row"><span><b>MINIMIZE TO ORB</b><small>Keep the sphere working in the background</small></span><input id="setting-orb" type="checkbox"><i></i></label>
+            <label class="toggle-row"><span><b>ALWAYS ON TOP</b><small>Keep the small orb visible</small></span><input id="setting-top" type="checkbox"><i></i></label>
+            <label class="toggle-row"><span><b>START WITH WINDOWS</b><small>Launch automatically at sign-in</small></span><input id="setting-startup" type="checkbox"><i></i></label>
+            <label>ANIMATION MODE<select id="setting-motion"><option value="cinematic">FULL CINEMATIC</option><option value="fast">FAST</option><option value="reduced">REDUCED MOTION</option></select></label>
+            <label>SKIN<select id="setting-skin"><option value="classic">CLASSIC AMBER</option><option value="command-center">COMMAND CENTER BLUE</option></select></label>
+                <label>ORB SKIN<select id="setting-orb-skin"></select></label>
+                <label>ORB COLOR<select id="setting-orb-color"><option value="gold">GOLD</option><option value="obsidian">OBSIDIAN</option></select></label>
+                <label>WINDOW GLASS<select id="setting-glass"></select></label>
+            <label>VOICE ENGINE<select id="setting-tts-engine"><option value="kokoro">JARVIS VOICE · NEURAL</option><option value="system">WINDOWS VOICES</option></select></label>
+            <label>JARVIS VOICE<select id="setting-kokoro-voice"></select></label>
+            <label>WINDOWS VOICE<select id="setting-voice-name"><option value="">AUTO · BRITISH IF AVAILABLE</option></select></label>
+            <button type="button" id="audition-voice" class="outline-action">▶ HEAR THIS VOICE</button>
+            <small id="tts-status-note">JARVIS's own voice runs on this PC's graphics card — nothing is sent anywhere. The first launch downloads the voice model (about 326 MB); until it finishes he speaks with a Windows voice.</small>
+            <small>The Windows voice above is the fallback. For a better one: Windows Settings → Time &amp; Language → Speech → Add voices → English (United Kingdom), then pick “Ryan” or “George”.</small>
+          </section>
+          <section data-tab="automation">
+            <h3>NIGHT SHIFT</h3>
+            <label class="toggle-row"><span><b>NIGHT SHIFT</b><small>Run brain jobs between midnight and 6am — drafts only, never sends</small></span><input id="setting-nightshift" type="checkbox"><i></i></label>
+            <label class="toggle-row"><span><b>HEARTBEAT CHECK-INS</b><small>Every 30 minutes, quietly check tasks and errors; speak only when something needs you</small></span><input id="setting-heartbeat" type="checkbox"><i></i></label>
+            <label>CLOUD BUDGET PER NIGHT (USD)<input id="setting-nightshift-budget" type="number" min="0" step="1" value="0"></label>
+            <small>0 means night jobs always use the free local brain. Drafts land in Documents\JARVIS Drafts.</small>
+          </section>
+          <section data-tab="automation">
+            <h3>AUTONOMY</h3>
+            <label class="toggle-row"><span><b>AUTONOMY MASTER SWITCH</b><small>Off: JARVIS never speaks or acts on his own</small></span><input id="setting-autonomy" type="checkbox"><i></i></label>
+            <label class="toggle-row"><span><b>SPEAK THE DOORBELL</b><small>Say who is at the door out loud</small></span><input id="setting-autonomy-doorbell" type="checkbox"><i></i></label>
+            <label class="toggle-row"><span><b>"SOMEONE'S HERE" CARD</b><small>Show a doorbell card with the camera picture</small></span><input id="setting-autonomy-card" type="checkbox"><i></i></label>
+            <label class="toggle-row"><span><b>SPOKEN MOTION SUMMARY</b><small>Say motion alerts out loud</small></span><input id="setting-autonomy-motion" type="checkbox"><i></i></label>
+            <label class="toggle-row"><span><b>NIGHT-ONLY MOTION ALERTS</b><small>Quiet motion pop-ups during the day</small></span><input id="setting-autonomy-night" type="checkbox"><i></i></label>
+            <label>NIGHT STARTS<select id="setting-autonomy-night-start"></select></label>
+            <label>NIGHT ENDS<select id="setting-autonomy-night-end"></select></label>
+            <small>Everything here is off until you turn it on. Autonomy only announces — it never sends, spends, deletes, or runs anything without asking.</small>
+          </section>
+          <section class="wide-setting" data-tab="abilities">
+            <h3>ASK CLAUDE</h3>
+            <label class="toggle-row"><span><b>ASK CLAUDE</b><small>Say "ask Claude…" to send a question to Claude on this PC.</small></span><input id="setting-claude-bridge" type="checkbox"><i></i></label>
+            <small>Answers only — Claude can read and explain, but cannot change your files or run anything. Questions leave this PC and go to Anthropic; billing follows whatever your Claude login uses, so a subscription already covers it. Every exchange is saved to the claude-chats folder in your JARVIS data folder. Scheduled tasks can never use this.</small>
+          </section>
+          <section class="wide-setting" data-tab="abilities">
+            <h3>SCREEN READING</h3>
+            <label class="toggle-row"><span><b>READ MY SCREEN</b><small>Say "read my screen" and JARVIS tells you what window and controls are in front of you.</small></span><input id="setting-screen-control" type="checkbox"><i></i></label>
+            <small>Reads only — JARVIS looks at what's on screen and describes it. It never clicks, types, or changes anything. It refuses to read financial, sign-in, or system windows, and it ignores password fields. Scheduled tasks can never use this.</small>
+          </section>
+          <section class="wide-setting" data-tab="abilities">
+            <h3>SCREEN DRIVING (BETA)</h3>
+            <label class="toggle-row"><span><b>LET JARVIS CLICK AND TYPE</b><small>Say "click Save", "type hello into Notepad", "open the File menu" — JARVIS presses named buttons for you.</small></span><input id="setting-screen-drive" type="checkbox"><i></i></label>
+            <small>File Explorer and Notepad only for now. Every job shows you the full plan first and waits for your OK; anything that saves, sends, or deletes asks again individually. A STOP window stays on top the whole time — press it, hit Escape, or say "stop" to end everything instantly. Financial windows (banks, brokers, anything that spends money) are blocked permanently and that block cannot be turned off. Never works from the phone or on a schedule.</small>
+          </section>
+          <section class="wide-setting" data-tab="automation">
+            <h3>SCHEDULE</h3>
+            <label class="toggle-row"><span><b>SCHEDULED TASKS</b><small>Off: nothing runs on its own, ever.</small></span><input id="setting-schedules" type="checkbox"><i></i></label>
+            <label>NAME<input id="schedule-name" type="text" maxlength="80" placeholder="Morning briefing"></label>
+            <label>TIME<input id="schedule-time" type="time"></label>
+            <label>REPEAT<select id="schedule-repeat">
+              <option value="once">ONCE</option>
+              <option value="daily">DAILY</option>
+              <option value="weekdays">WEEKDAYS</option>
+              <option value="weekly">WEEKLY</option>
+            </select></label>
+            <div id="schedule-weekday-row" hidden><label>WEEKDAY<select id="schedule-weekday">
+              <option value="0">SUNDAY</option>
+              <option value="1">MONDAY</option>
+              <option value="2">TUESDAY</option>
+              <option value="3">WEDNESDAY</option>
+              <option value="4">THURSDAY</option>
+              <option value="5">FRIDAY</option>
+              <option value="6">SATURDAY</option>
+            </select></label></div>
+            <label>ACTION<select id="schedule-action">
+              <option value="speak">SAY SOMETHING</option>
+              <option value="ask">ASK JARVIS</option>
+              <option value="briefing">DAILY BRIEFING</option>
+            </select></label>
+            <div id="schedule-text-row"><label><span id="schedule-text-label">SAY THIS</span><input id="schedule-text" type="text" maxlength="500" placeholder="Good morning, sir."></label></div>
+            <button type="button" id="schedule-add-btn" class="primary-action">ADD</button>
+            <ul id="schedule-list" class="search-root-list"></ul>
+            <small>Scheduled items wait for their exact time. Turning the switch off stops everything immediately — nothing sends, spends, deletes, or acts without your say-so.</small>
+          </section>
+          <section data-tab="phone">
+            <h3>MOBILE</h3>
+            <label class="toggle-row"><span><b>PHONE ACCESS</b><small>Serve JARVIS to your paired phones over Tailscale. Off: no server runs.</small></span><input id="setting-mobile" type="checkbox"><i></i></label>
+            <small id="mobile-status"></small>
+            <label>MOBILE PORT<input id="setting-mobile-port" type="number" min="1024" max="65535"></label>
+            <label>MOBILE PUBLIC URL<input id="setting-mobile-public-url" type="text" placeholder="https://your-machine.your-tailnet.ts.net"></label>
+            <small>The HTTPS address from <code>tailscale serve</code>. Leave blank to fall back to the plain tailnet address, where the phone's microphone will not work.</small>
+            <button type="button" id="mobile-pair-btn" class="primary-action">PAIR A PHONE</button>
+            <div id="mobile-pair-panel" hidden>
+              <img id="mobile-qr" alt="Pairing QR">
+              <p>Scan with the iPhone camera, or browse to <code id="mobile-url"></code> and enter code <b id="mobile-code"></b>. Expires in 2 minutes.</p>
+            </div>
+            <div id="mobile-devices" class="search-root-list"></div>
+          </section>
+          <section data-tab="calls">
+            <h3>FAMILY CALLS</h3>
+            <label class="toggle-row"><span><b>ANSWER CALLS ON THIS PC</b><small>Video calls with your paired JARVIS over Tailscale. Off: no line, no server.</small></span><input id="call-enabled" type="checkbox"><i></i></label>
+            <small id="call-settings-status"></small>
+            <button type="button" id="call-pair-start" class="primary-action">PAIR — SHOW A CODE</button>
+            <small id="call-pair-code"></small>
+            <label>OTHER PC'S TAILSCALE ADDRESS<input id="call-claim-host" type="text" placeholder="100.x.x.x or machine name"></label>
+            <label>6-DIGIT CODE FROM THAT PC<input id="call-claim-code" type="text" maxlength="6" placeholder="123456"></label>
+            <button type="button" id="call-claim-go" class="outline-action">PAIR WITH THAT PC</button>
+            <button type="button" id="call-unpair" class="outline-action">FORGET THE OTHER PC</button>
+            <small>Pair once: show a code on one PC, type it on the other within 2 minutes. Calls never leave your Tailscale line.</small>
+          </section>
+          <section data-tab="system">
+            <h3>PROJECT WORKSPACES</h3>
+            <div class="folder-setting"><span><b>ANVIL</b><small id="folder-anvil">Not assigned</small></span><button type="button" data-folder="anvil">CHOOSE</button></div>
+            <div class="folder-setting"><span><b>THE BENCH</b><small id="folder-the-bench">Not assigned</small></span><button type="button" data-folder="the bench">CHOOSE</button></div>
+            <div class="folder-setting"><span><b>ADAMSCRAFT</b><small id="folder-adamscraft">Not assigned</small></span><button type="button" data-folder="adamscraft">CHOOSE</button></div>
+          </section>
+          <section class="wide-setting" data-tab="system">
+            <h3>FOLDERS JARVIS MAY SEARCH</h3>
+            <div id="search-root-list" class="search-root-list"></div>
+            <button type="button" id="add-search-root" class="outline-action">＋ ADD SEARCH FOLDER</button>
+          </section>
+          <section class="wide-setting" data-tab="pro">
+            <h3>FEATURES</h3>
+            <div class="setup-status"><i></i><div><b>EVERYTHING INCLUDED — FREE</b><span>JARVIS is completely free. Every feature below is unlocked on this PC — no key, no account, no subscription.</span></div></div>
+            <div class="pro-feature-table">
+              <div><b>THE ASSISTANT</b>
+                <ul>
+                  <li>Wake-word voice &amp; push-to-talk</li>
+                  <li>Tasks, reminders &amp; morning briefing</li>
+                  <li>File search &amp; safe organizing</li>
+                  <li>Document reading &amp; Q&amp;A with citations</li>
+                  <li>Local brain, plus your own cloud keys</li>
+                  <li>Ask Claude</li>
+                  <li>A sense of humor — and Santa stays real</li>
+                </ul>
+              </div>
+              <div><b>THE POWER FEATURES</b>
+                <ul>
+                  <li>Security cameras (Ring, Blink, Nest, RTSP)</li>
+                  <li>Phone companion over Tailscale</li>
+                  <li>Scheduled tasks &amp; daily briefings on a timer</li>
+                  <li>Autonomy — he speaks up on his own</li>
+                  <li>Screen reading &amp; "look at my screen"</li>
+                  <li>Screen driving &amp; night shift</li>
+                </ul>
+              </div>
+            </div>
+            <small>Everything runs on this computer and stays yours. Turn features on under their own tabs — each one is off until you say otherwise.</small>
+          </section>
+          <section data-tab="system">
+            <h3>ABOUT &amp; UPDATES</h3>
+            <div class="setup-status"><i id="update-light"></i><div><b id="update-title">JARVIS</b><span id="update-detail">Free local assistant.</span></div></div>
+            <button type="button" id="check-update" class="primary-action">CHECK FOR UPDATES</button>
+            <button type="button" id="download-update" class="outline-action" hidden>DOWNLOAD UPDATE</button>
+            <small>Checks the public release page for a newer version. Nothing is installed automatically.</small>
+          </section>
+          <section data-tab="system">
+            <h3>BACKUP &amp; RESTORE</h3>
+            <button type="button" id="export-backup" class="primary-action">EXPORT MY DATA</button>
+            <button type="button" id="import-backup" class="outline-action">IMPORT A BACKUP</button>
+            <small>Saves your tasks, notes, folders, and routines to a file you choose. API keys are never included. Import merges without deleting what you already have.</small>
+            <h3>CONVERSATION RECORD</h3>
+            <button type="button" id="copy-transcript" class="primary-action">COPY TODAY'S TRANSCRIPT</button>
+            <button type="button" id="open-transcript" class="outline-action">OPEN THE TRANSCRIPT FOLDER</button>
+            <small id="transcript-status">Everything said, both sides, in plain text. Kept for today and yesterday only, then deleted automatically — this is a scratchpad, not an archive. Never leaves this computer.</small>
+          </section>
+        </div>
+        <footer><span>Local data stays on this computer. Cloud mode sends conversation text to your chosen provider. · <b id="app-version">VERSION</b></span><div><button type="button" data-close-settings>CANCEL</button><button type="submit" class="save-button">SAVE SETTINGS</button></div></footer>
+      </form>
+    </dialog>
+
+    <dialog id="voice-diagnostics-modal" class="settings-modal diagnostics-modal">
+      <header><div><span>LOCAL VOICE</span><h2>VOICE DIAGNOSTICS</h2></div><button type="button" id="close-diagnostics">×</button></header>
+      <p class="diagnostics-intro">Green means working. Red tells you exactly what to fix.</p>
+      <div id="diagnostic-rows" class="diagnostic-rows">
+        <div class="diagnostic-row" data-check="micPermission"><i></i><div><b>MICROPHONE PERMISSION</b><span>Checking…</span></div></div>
+        <div class="diagnostic-row" data-check="microphone"><i></i><div><b>MICROPHONE DEVICE</b><span>Checking…</span></div></div>
+        <div class="diagnostic-row" data-check="installed"><i></i><div><b>PYTHON VOICE ENVIRONMENT</b><span>Checking…</span></div></div>
+        <div class="diagnostic-row" data-check="speechModel"><i></i><div><b>SPEECH MODEL</b><span>Checking…</span></div></div>
+        <div class="diagnostic-row" data-check="wakeModel"><i></i><div><b>WAKE-WORD MODEL</b><span>Checking…</span></div></div>
+        <div class="diagnostic-row" data-check="running"><i></i><div><b>VOICE SERVICE RUNNING</b><span>Checking…</span></div></div>
+        <div class="diagnostic-row" data-check="wakeReady"><i></i><div><b>WAKE WORD LISTENING</b><span>Checking…</span></div></div>
+      </div>
+      <div class="diagnostic-live">
+        <div class="mic-meter"><span>INPUT LEVEL</span><div class="meter-track"><i id="diagnostic-level"></i></div></div>
+        <p id="diagnostic-result">Use the buttons below to test your microphone and wake word.</p>
+      </div>
+      <div class="diagnostic-actions">
+        <button type="button" id="diag-test-mic" class="primary-action">TEST MICROPHONE</button>
+        <button type="button" id="diag-test-wake" class="primary-action">TEST THE WAKE WORD</button>
+        <button type="button" id="diag-repair" class="outline-action">REPAIR VOICE</button>
+        <button type="button" id="diag-copy" class="outline-action">COPY DIAGNOSTIC REPORT</button>
+        <button type="button" id="diag-refresh" class="outline-action">RUN CHECKS AGAIN</button>
+      </div>
+    </dialog>
+
+    <!-- First-run naming (retail builds only; see core/onboarding.js).
+         Two steps: pick the name, then say it back so speech recognition gets
+         a real test before the buyer relies on it. Every path out of this
+         screen stamps onboarding closed — it never appears twice. -->
+    <div id="naming-screen" class="naming-screen" hidden>
+      <div class="naming-card">
+        <section id="naming-step-name">
+          <span class="naming-kicker">FIRST RUN</span>
+          <h2>Name your assistant</h2>
+          <p>He'll answer to this, refer to himself by it, and it's how you'll think of him. You can rename him any time in Settings → GENERAL.</p>
+          <input id="naming-input" type="text" maxlength="32" placeholder="JARVIS" autocomplete="off" spellcheck="false" />
+          <div class="naming-actions">
+            <button type="button" id="naming-skip" class="naming-ghost">KEEP “JARVIS”</button>
+            <button type="button" id="naming-continue" class="naming-primary">CONTINUE</button>
+          </div>
+        </section>
+        <section id="naming-step-voice" hidden>
+          <span class="naming-kicker">VOICE CHECK</span>
+          <h2 id="naming-say-title">Now say it out loud</h2>
+          <p id="naming-say-hint">Press the button, say the name, then pause — that's exactly how you'll wake him, and this proves speech recognition hears it the way you say it.</p>
+          <div class="naming-meter"><i id="naming-level"></i></div>
+          <p id="naming-verdict" class="naming-verdict"></p>
+          <div class="naming-actions">
+            <button type="button" id="naming-voice-skip" class="naming-ghost">SKIP THIS</button>
+            <button type="button" id="naming-record" class="naming-primary">RECORD · SAY IT</button>
+            <button type="button" id="naming-done" class="naming-primary" hidden>SOUNDS GOOD</button>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <dialog id="approval-modal" class="approval-modal">
+      <div class="warning">!</div><span>CONFIRMATION REQUIRED</span><h2 id="approval-title">CONFIRM ACTION</h2><p id="approval-detail"></p><div><button id="approval-deny">CANCEL</button><button id="approval-accept">CONFIRM</button></div>
+    </dialog>
+
+    <div id="screen-privacy" class="screen-privacy" aria-live="polite"><i></i> JARVIS IS VIEWING YOUR SCREEN</div>
+    <div id="action-timeline" class="action-timeline" aria-label="Recent JARVIS actions"></div>
+    <div id="toast" class="toast"></div>
+    <div class="term-exit-hint" aria-hidden="true">ESC TO EXIT</div>
+    <script src="orbs/orb-engine.js"></script>
+    <script src="orbs/orb-utils.js"></script>
+    <script src="orbs/orb-fx.js"></script>
+    <script src="orbs/plasma.js"></script>
+    <script src="orbs/neural.js"></script>
+    <script src="orbs/classic.js"></script>
+    <script src="orbs/zen.js"></script>
+    <script src="orbs/halation.js"></script>
+    <script src="orbs/aurora.js"></script>
+    <script src="orbs/starfield.js"></script>
+    <script src="orbs/ultron.js"></script>
+    <script src="hologram.js"></script>
+    <script src="layout-engine.js"></script>
+    <script src="skins.js"></script>
+    <script src="settings-tabs.js"></script>
+    <script src="orb-voice.js"></script>
+    <script src="glass.js"></script>
+    <script src="terminal-log.js"></script>
+    <script src="terminal-ui.js"></script>
+    <script src="terminal-session.js"></script>
+    <script src="renderer.js"></script>
+    <script src="command-center.js"></script>
+    <div id="call-overlay" hidden>
+      <div id="call-ring" hidden>
+        <p id="call-ring-label">Incoming call</p>
+        <div id="call-ring-actions">
+          <button id="call-answer" type="button">ANSWER</button>
+          <button id="call-decline" type="button">DECLINE</button>
+        </div>
+      </div>
+      <div id="call-stage" hidden>
+        <video id="call-remote" autoplay playsinline></video>
+        <video id="call-local" autoplay playsinline muted></video>
+        <div id="call-controls">
+          <span id="call-timer">0:00</span>
+          <button id="call-mute" type="button">MUTE</button>
+          <button id="call-end" type="button">END</button>
+        </div>
+      </div>
+      <p id="call-status-line"></p>
+    </div>
+    <!-- Chromium cannot play a raw MPEG-TS stream, which is what Blink live view
+         delivers; mpegts.js demuxes it into MediaSource. Loaded from
+         node_modules like kokoro-js in voice-worker.js. -->
+    <script src="../node_modules/mpegts.js/dist/mpegts.js"></script>
+    <script src="sdp-align.js"></script>
+    <script src="live-player.js"></script>
+    <script src="cameras-ui.js"></script>
+    <script src="call-settings.js"></script>
+    <script src="call-ui.js"></script>
+    <script src="defense-ui.js"></script>
+    <script src="browser-tabs.js"></script>
+    <script src="browser-ui.js"></script>
+  </body>
+</html>

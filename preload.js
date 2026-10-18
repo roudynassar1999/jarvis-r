@@ -1,0 +1,199 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+function on(channel, callback) {
+  const listener = (_event, payload) => callback(payload);
+  ipcRenderer.on(channel, listener);
+  return () => ipcRenderer.removeListener(channel, listener);
+}
+
+contextBridge.exposeInMainWorld('jarvis', {
+  bootstrap: () => ipcRenderer.invoke('bootstrap'),
+  telemetry: () => ipcRenderer.invoke('telemetry'),
+  submitCommand: (text, project) => ipcRenderer.invoke('command:submit', { text, project }),
+  resolveApproval: (id, approved) => ipcRenderer.invoke('approval:resolve', { id, approved }),
+  // THE TERMINAL stage 2. classify first to decide whether a confirm card is
+  // needed, then run with approved:true once the human agrees. Passing
+  // approved:true without having asked is caught in the main process.
+  classifyTerminalCommand: (command) => ipcRenderer.invoke('terminal:classify', { command }),
+  runTerminalCommand: (command, cwd, approved) => ipcRenderer.invoke('terminal:run', { command, cwd, approved }),
+  terminalCwd: () => ipcRenderer.invoke('terminal:cwd'),
+  recentActivity: (limit) => ipcRenderer.invoke('activity:recent', limit),
+  readTranscript: () => ipcRenderer.invoke('transcript:read'),
+  revealTranscript: () => ipcRenderer.invoke('transcript:reveal'),
+  // First-run naming (retail builds). name commits the choice; heard runs
+  // the say-it-back mic check on a recorded clip.
+  onboarding: {
+    name: (name) => ipcRenderer.invoke('onboarding:name', { name }),
+    heard: (bytes, mimeType, name) => ipcRenderer.invoke('onboarding:heard', { bytes, mimeType, name })
+  },
+  transcribe: (bytes, mimeType) => ipcRenderer.invoke('voice:transcribe', { bytes, mimeType }),
+  // Speaking, as opposed to the hearing side above: returns WAV bytes rendered
+  // by Kokoro, or { ok:false } meaning "use the system voice".
+  speak: (text, voice) => ipcRenderer.invoke('tts:speak', { text, voice }),
+  ttsVoices: () => ipcRenderer.invoke('tts:voices'),
+  ttsStatus: () => ipcRenderer.invoke('tts:status'),
+  onTtsStatus: (callback) => on('tts:status', callback),
+  voiceStatus: () => ipcRenderer.invoke('voice:status'),
+  diagnoseVoice: () => ipcRenderer.invoke('voice:diagnose'),
+  setupLocalVoice: () => ipcRenderer.invoke('voice:setup'),
+  restartLocalVoice: () => ipcRenderer.invoke('voice:restart'),
+  connectOllama: () => ipcRenderer.invoke('ollama:connect'),
+  ollamaStatus: () => ipcRenderer.invoke('ollama:status'),
+  saveOpenAIKey: (key) => ipcRenderer.invoke('openai:save-key', key),
+  removeOpenAIKey: () => ipcRenderer.invoke('openai:remove-key'),
+  testOpenAI: () => ipcRenderer.invoke('openai:test'),
+  saveAnthropicKey: (key) => ipcRenderer.invoke('anthropic:save-key', key),
+  removeAnthropicKey: () => ipcRenderer.invoke('anthropic:remove-key'),
+  testAnthropic: () => ipcRenderer.invoke('anthropic:test'),
+  tasks: {
+    list: () => ipcRenderer.invoke('tasks:list'),
+    add: (input) => ipcRenderer.invoke('tasks:add', input),
+    update: (id, patch) => ipcRenderer.invoke('tasks:update', { id, patch }),
+    remove: (id) => ipcRenderer.invoke('tasks:remove', id)
+  },
+  memories: {
+    list: () => ipcRenderer.invoke('memory:list'),
+    add: (text, project) => ipcRenderer.invoke('memory:add', { text, project }),
+    update: (id, text) => ipcRenderer.invoke('memory:update', { id, text }),
+    remove: (id) => ipcRenderer.invoke('memory:remove', id)
+  },
+  cameras: {
+    bootstrap: () => ipcRenderer.invoke('cameras:bootstrap'),
+    addRtsp: (payload) => ipcRenderer.invoke('cameras:add-rtsp', payload),
+    removeAccount: (accountId) => ipcRenderer.invoke('cameras:remove-account', accountId),
+    list: () => ipcRenderer.invoke('cameras:list'),
+    snapshot: (key, manual) => ipcRenderer.invoke('cameras:snapshot', { key, manual }),
+    liveStart: (key) => ipcRenderer.invoke('cameras:live-start', key),
+    liveStop: (key) => ipcRenderer.invoke('cameras:live-stop', key),
+    discover: () => ipcRenderer.invoke('cameras:discover'),
+    addBlink: (payload) => ipcRenderer.invoke('cameras:add-blink', payload),
+    // Pop-out camera windows, so cameras can sit on other monitors.
+    popOut: (camera) => ipcRenderer.invoke('cameras:popout', camera),
+    popIn: (key) => ipcRenderer.invoke('cameras:popin', { key }),
+    poppedOut: () => ipcRenderer.invoke('cameras:popped-out'),
+    hiddenList: () => ipcRenderer.invoke('cameras:hidden-list'),
+    hide: (identity) => ipcRenderer.invoke('cameras:hide', identity),
+    unhideAll: () => ipcRenderer.invoke('cameras:unhide-all'),
+    onWindowClosed: (fn) => ipcRenderer.on('cameras:window-closed', (_event, key) => fn(key)),
+    systems: () => ipcRenderer.invoke('cameras:systems'),
+    setArmed: (key, armed) => ipcRenderer.invoke('cameras:set-armed', { key, armed }),
+    addRing: (payload) => ipcRenderer.invoke('cameras:add-ring', payload),
+    liveAnswer: (key, offerSdp) => ipcRenderer.invoke('cameras:live-answer', { key, offerSdp }),
+    describe: (key) => ipcRenderer.invoke('cameras:describe', key),
+    addNest: (payload) => ipcRenderer.invoke('cameras:add-nest', payload),
+    openNestConsole: () => ipcRenderer.invoke('external:nest-console')
+  },
+  defense: {
+    status: () => ipcRenderer.invoke('defense:status'),
+    enter: () => ipcRenderer.invoke('defense:enter'),
+    exit: () => ipcRenderer.invoke('defense:exit'),
+    waveOff: () => ipcRenderer.invoke('defense:wave-off'),
+    zones: (stateCode) => ipcRenderer.invoke('defense:zones', stateCode)
+  },
+  onDefenseEnter: (callback) => on('defense:enter', callback),
+  onDefenseExit: (callback) => on('defense:exit', callback),
+  onDefensePending: (callback) => on('defense:pending', callback),
+  onDefensePendingCancelled: (callback) => on('defense:pending-cancelled', callback),
+  onDefenseUpdate: (callback) => on('defense:update', callback),
+  onBrowserOpenTab: (callback) => on('browser:open-tab', callback),
+  onBrowserNotice: (callback) => on('browser:notice', callback),
+  onCamerasAlert: (callback) => on('cameras:alert', callback),
+  onCamerasChanged: (callback) => on('cameras:changed', callback),
+  onCamerasStatus: (callback) => on('cameras:status', callback),
+  onAutonomyEvent: (callback) => on('autonomy:event', callback),
+  mobile: {
+    status: () => ipcRenderer.invoke('mobile:status'),
+    pair: () => ipcRenderer.invoke('mobile:pair'),
+    devices: () => ipcRenderer.invoke('mobile:devices'),
+    revoke: (id) => ipcRenderer.invoke('mobile:revoke', id),
+    onStatus: (callback) => on('mobile:status', callback)
+  },
+  call: {
+    status: () => ipcRenderer.invoke('call:status'),
+    pairStart: () => ipcRenderer.invoke('call:pair-start'),
+    pairClaim: (host, code) => ipcRenderer.invoke('call:pair-claim', { host, code }),
+    unpair: () => ipcRenderer.invoke('call:unpair'),
+    ping: () => ipcRenderer.invoke('call:ping'),
+    dial: (sdp) => ipcRenderer.invoke('call:dial', { sdp }),
+    answer: (callId, sdp) => ipcRenderer.invoke('call:answer', { callId, sdp }),
+    ice: (callId, candidate) => ipcRenderer.invoke('call:ice', { callId, candidate }),
+    hangup: (callId, reason) => ipcRenderer.invoke('call:hangup', { callId, reason }),
+    onEvent: (callback) => on('call:event', callback)
+  },
+  schedule: {
+    list: () => ipcRenderer.invoke('schedule:list'),
+    add: (input) => ipcRenderer.invoke('schedule:add', input),
+    update: (id, patch) => ipcRenderer.invoke('schedule:update', { id, patch }),
+    remove: (id) => ipcRenderer.invoke('schedule:remove', id),
+    runNow: (id) => ipcRenderer.invoke('schedule:runNow', id),
+    onChanged: (callback) => on('schedule:changed', callback)
+  },
+  files: {
+    roots: () => ipcRenderer.invoke('files:roots'),
+    home: () => ipcRenderer.invoke('files:home'),
+    list: (directory) => ipcRenderer.invoke('files:list', directory),
+    open: (target) => ipcRenderer.invoke('path:open', target)
+  },
+  license: {
+    status: () => ipcRenderer.invoke('license:status'),
+    activate: (key) => ipcRenderer.invoke('license:activate', key),
+    validate: () => ipcRenderer.invoke('license:validate'),
+    deactivate: () => ipcRenderer.invoke('license:deactivate'),
+    buy: () => ipcRenderer.invoke('external:buy-pro'),
+    onProRefused: (callback) => on('license:pro-refused', callback)
+  },
+  checkForUpdate: () => ipcRenderer.invoke('update:check'),
+  openUpdate: (url) => ipcRenderer.invoke('update:open', url),
+  onUpdateAvailable: (callback) => on('update:available', callback),
+  describeScreen: (question) => ipcRenderer.invoke('screen:describe', question),
+  onScreenViewing: (callback) => on('screen:viewing', callback),
+  onScreenDrive: (callback) => on('screen:drive', callback),
+  exportBackup: () => ipcRenderer.invoke('backup:export'),
+  importBackup: () => ipcRenderer.invoke('backup:import'),
+  saveSettings: (settings) => ipcRenderer.invoke('settings:save', settings),
+  chooseFolder: (title) => ipcRenderer.invoke('dialog:folder', title),
+  openPath: (target) => ipcRenderer.invoke('path:open', target),
+  readClipboard: () => ipcRenderer.invoke('clipboard:read'),
+  writeClipboard: (text) => ipcRenderer.invoke('clipboard:write', text),
+  openOllamaDownload: () => ipcRenderer.invoke('external:ollama'),
+  openOpenAIBilling: () => ipcRenderer.invoke('external:openai-billing'),
+  openOpenAIKeys: () => ipcRenderer.invoke('external:openai-keys'),
+  openAnthropicKeys: () => ipcRenderer.invoke('external:anthropic-keys'),
+  showWidget: () => ipcRenderer.send('widget:show'),
+  restoreMain: () => ipcRenderer.send('widget:restore'),
+  widgetDragStart: () => ipcRenderer.send('widget:drag-start'),
+  widgetDragMove: () => ipcRenderer.send('widget:drag-move'),
+  widgetDragEnd: () => ipcRenderer.send('widget:drag-end'),
+  widgetResize: (direction) => ipcRenderer.send('widget:resize', direction),
+  widgetZoomAbort: () => ipcRenderer.send('widget:zoom-abort'),
+  onWidgetZoom: (callback) => on('widget:zoom', callback),
+  onWidgetZoomExit: (callback) => on('widget:zoom-exit', callback),
+  onWidgetPop: (callback) => on('widget:pop', callback),
+  onWidgetPopReset: (callback) => on('widget:pop-reset', callback),
+  windowControl: (action) => ipcRenderer.send('window:control', action),
+  reportError: (info) => ipcRenderer.send('crash:renderer-error', info),
+  nightShiftStatus: () => ipcRenderer.invoke('nightshift:status'),
+  orbPrefs: () => ipcRenderer.invoke('orb:prefs'),
+  onOrbPrefs: (callback) => on('orb:prefs', callback),
+  onWakeDetected: (callback) => on('wake:detected', callback),
+  onWakeStatus: (callback) => on('voice:status', callback),
+  onVoiceLog: (callback) => on('voice:log', callback),
+  cancelAI: () => ipcRenderer.send('ai:cancel'),
+  onAIStream: (callback) => on('ai:stream', callback),
+  onAIStreamReset: (callback) => on('ai:stream-reset', callback),
+  onVoiceSetupProgress: (callback) => on('voice:setup-progress', callback),
+  onVoiceSetupDone: (callback) => on('voice:setup-done', callback),
+  onOllamaStatus: (callback) => on('ollama:status', callback),
+  onFileStart: (callback) => on('files:start', callback),
+  onFileProgress: (callback) => on('files:progress', callback),
+  onFileMatch: (callback) => on('files:match', callback),
+  onFileComplete: (callback) => on('files:complete', callback),
+  onTasksChanged: (callback) => on('tasks:changed', callback),
+  setUIState: (state, message) => ipcRenderer.send('ui:state', { state, message }),
+  onUIState: (callback) => on('ui:state', callback),
+  setUIAudio: (level) => ipcRenderer.send('ui:audio', level),
+  onUIAudio: (callback) => on('ui:audio', callback),
+  onAgentStep: (callback) => on('agent:step', callback),
+  setSkin: (skin) => ipcRenderer.send('ui:skin', skin),
+  onSkin: (callback) => on('ui:skin', callback)
+});

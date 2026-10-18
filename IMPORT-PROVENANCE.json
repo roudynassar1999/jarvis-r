@@ -1,0 +1,32 @@
+{
+  "source_repository": "https://github.com/Adamdesgns/jarvis-local-assistant",
+  "source_commit": "6cbc3039422767b17ae56224e45e3fb74a62ab4e",
+  "source_license": "MIT",
+  "imported_on": "2026-10-18",
+  "upstream_files": 297,
+  "upstream_files_modified": false,
+  "additions": [
+    "ROUDY-START-HERE.md",
+    "SETUP-AND-RUN-WINDOWS.bat",
+    "RUN-JARVIS-WINDOWS.bat",
+    "IMPORT-PROVENANCE.json"
+  ],
+  "import_type": "runtime source subset",
+  "excluded": [
+    "internal plans and session handoffs",
+    "marketing drafts and setup prompt",
+    "PDF and development documentation",
+    "tests",
+    "non-runtime build/probe scripts",
+    "design preview assets"
+  ],
+  "imported_files": 155,
+  "validation": {
+    "environment": "Linux",
+    "upstream_test_total": 924,
+    "passed": 912,
+    "failed": 11,
+    "skipped": 1,
+    "windows_runtime_tested": false
+  }
+}

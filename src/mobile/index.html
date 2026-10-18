@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Orb</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icon-180.png">
+  <link rel="stylesheet" href="/mobile.css">
+</head>
+<body class="pairing">
+  <header class="bar bar-top"><h1 class="title">J.A.R.V.I.S.</h1><span id="conn-dot" class="dot"></span></header>
+
+  <section id="screen-pairing" class="screen-pairing">
+    <div class="card stack">
+      <p class="text-dim">Scan the QR code on the desktop (Settings → MOBILE → Pair a phone), or enter the 6-digit code:</p>
+      <input id="pair-code" class="field field-code" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code">
+      <button id="pair-btn" class="btn btn-primary btn-block">PAIR</button>
+      <p id="pair-error" class="error" hidden></p>
+    </div>
+  </section>
+
+  <section id="screen-home" hidden>
+    <div id="orb-stage" class="orb-stage" role="button" tabindex="0"
+         aria-label="Tap to speak. Double-tap to open the console. Press and hold to choose your JARVIS."></div>
+    <p id="home-status" class="home-status">Tap to speak &nbsp;·&nbsp; double-tap to open</p>
+    <p id="home-reply" class="home-reply" aria-live="polite" hidden></p>
+  </section>
+
+  <section id="screen-chat" hidden>
+    <div id="thread" class="thread"></div>
+    <div id="agent-status" class="status" hidden></div>
+    <footer class="bar bar-bottom composer-bar">
+      <textarea id="composer" class="field composer-field" rows="1" placeholder="Message JARVIS…"></textarea>
+      <button id="send-btn" class="btn btn-secondary btn-icon" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 3.5 10.75 13.25M20.5 3.5l-6.25 17-3.5-7.75-7.75-3.5z"/></svg></button>
+      <button id="mic-btn" class="btn btn-primary btn-icon btn-mic" aria-label="Hold to talk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9.25" y="3.25" width="5.5" height="10.5" rx="2.75"/><path d="M5.75 11.25a6.25 6.25 0 0 0 12.5 0M12 17.5v3.25"/></svg></button>
+    </footer>
+  </section>
+
+  <section id="screen-cameras" hidden>
+    <div id="cameras-list-view" class="stack cameras-stack">
+      <button id="cameras-alert-banner" type="button" class="card cameras-alert-card" hidden></button>
+      <div id="cameras-status" class="text-dim"></div>
+      <div id="cameras-list" class="stack cameras-list" aria-live="polite"></div>
+    </div>
+
+    <div id="cameras-detail-view" class="stack cameras-detail" hidden>
+      <button id="cameras-back-btn" class="btn btn-secondary cameras-back-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.75 8.25 12l6.25 6.25"/></svg>Cameras</button>
+      <div class="card stack cameras-detail-card">
+        <h2 id="cameras-detail-name" class="cameras-detail-name"></h2>
+        <div id="cameras-shot-frame" class="cameras-shot-frame">
+          <img id="cameras-shot-img" class="cameras-shot-img" hidden>
+          <div id="cameras-shot-loading" class="text-dim" hidden>Loading snapshot…</div>
+          <p id="cameras-shot-error" class="error" hidden></p>
+        </div>
+        <p id="cameras-shot-time" class="text-dim" hidden></p>
+        <button id="cameras-refresh-btn" class="btn btn-primary btn-block">Refresh</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-send" hidden>
+    <div class="stack send-stack">
+      <div class="card stack">
+        <div class="stack send-picker">
+          <input id="send-file-input" type="file" multiple hidden>
+          <label for="send-file-input" class="btn btn-secondary btn-block">Choose Files</label>
+          <p id="send-file-summary" class="text-dim">No files selected.</p>
+        </div>
+
+        <div class="stack send-picker">
+          <label for="send-name" class="text-dim">Name it (optional)</label>
+          <input id="send-name" class="field" type="text" placeholder="Leave blank to use a smart default" autocomplete="off">
+        </div>
+
+        <div class="stack send-picker">
+          <label for="send-destination" class="text-dim">Destination</label>
+          <select id="send-destination" class="field"></select>
+          <p id="send-dest-error" class="error" hidden></p>
+        </div>
+
+        <button id="send-upload-btn" class="btn btn-primary btn-block" disabled>Send</button>
+      </div>
+
+      <div id="send-queue" class="stack send-queue" aria-live="polite"></div>
+
+      <p id="send-summary" class="text-dim" hidden></p>
+    </div>
+  </section>
+
+  <section id="screen-offline" class="screen-offline" hidden>
+    <p>JARVIS is unreachable — is the PC awake?</p>
+    <button id="retry-btn" class="btn btn-primary">RETRY</button>
+  </section>
+
+  <nav id="tab-bar" class="bar bar-bottom tab-bar" hidden>
+    <button id="tab-home" class="tab-item" role="tab" aria-selected="false" aria-controls="screen-home" data-screen="home">
+      <span class="tab-glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="8.25"/><circle cx="12" cy="12" r="2.25" fill="currentColor" stroke="none"/></svg></span>
+      <span class="tab-label">Orb</span>
+    </button>
+    <button id="tab-chat" class="tab-item" role="tab" aria-selected="false" aria-controls="screen-chat" data-screen="chat">
+      <span class="tab-glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.25c-4.56 0-8.25 3.02-8.25 6.75 0 1.8.86 3.44 2.26 4.65L5.2 19.5l3.9-1.45c.9.29 1.88.45 2.9.45 4.56 0 8.25-3.02 8.25-6.75S16.56 4.25 12 4.25z"/></svg></span>
+      <span class="tab-label">Chat</span>
+    </button>
+    <button id="tab-cameras" class="tab-item" role="tab" aria-selected="false" aria-controls="screen-cameras" data-screen="cameras">
+      <span class="tab-glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8.4 6.75l1.5-2h4.2l1.5 2h3.15a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-9a1.5 1.5 0 0 1 1.5-1.5z"/><circle cx="12" cy="12.5" r="3.25"/></svg><span id="tab-cameras-badge" class="tab-badge" hidden></span></span>
+      <span class="tab-label">Cameras</span>
+    </button>
+    <button id="tab-send" class="tab-item" role="tab" aria-selected="false" aria-controls="screen-send" data-screen="send">
+      <span class="tab-glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5V4.75M8.25 8.5 12 4.75l3.75 3.75"/><path d="M3.75 14.5v3a2 2 0 0 0 2 2h12.5a2 2 0 0 0 2-2v-3"/></svg></span>
+      <span class="tab-label">Send</span>
+    </button>
+  </nav>
+
+  <script src="/orbs/orb-engine.js"></script>
+  <script src="/orbs/orb-utils.js"></script>
+  <script src="/orbs/orb-fx.js"></script>
+  <script src="/orbs/plasma.js"></script>
+  <script src="/orbs/neural.js"></script>
+  <script src="/orbs/classic.js"></script>
+  <script src="/orbs/zen.js"></script>
+  <script src="/orbs/halation.js"></script>
+  <script src="/orbs/aurora.js"></script>
+  <script src="/orbs/starfield.js"></script>
+  <script src="/orbs/ultron.js"></script>
+  <script src="/orb-host.js"></script>
+  <script src="/mobile.js"></script>
+</body>
+</html>

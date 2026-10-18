@@ -1,0 +1,928 @@
+﻿/* Classic skin â€” modernized 2026-07-24. All values flow from tokens.css.
+   Same selectors and layout mechanics as before; only the finish changed:
+   glass + soft depth instead of scanlines and hard glows, readable type
+   (11px floor) instead of 6-8px tracked microtext. */
+
+* { box-sizing: border-box; }
+/* The hidden attribute always wins. Four separate bugs came from a class-level
+   display beating [hidden] (camera sign-ins, camera menu, defense wave-off,
+   the browser's "open a tab" note) — this ends the whole class. If something
+   must render while carrying hidden, that something is wrong, not this rule. */
+[hidden] { display: none !important; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--bg); color: var(--text-primary); font-family: var(--font); }
+/* Pitch black, no ambient washes â€” the only light in the room is JARVIS. */
+body { background: var(--bg); }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+
+/* Retired 2015-era overlays â€” kept as selectors so old markup stays inert. */
+.ambient-grid, .scanlines { display: none; }
+
+/* ---------- top bar ---------- */
+.topbar { height: 62px; position: relative; z-index: 60; display: flex; align-items: center; padding: 0 var(--s3) 0 var(--s4); border-bottom: 1px solid var(--line); background: var(--surface-bar); backdrop-filter: blur(20px); -webkit-app-region: drag; }
+.topbar::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: linear-gradient(90deg, transparent, var(--accent-tint-35), transparent 60%); }
+.brand { display: flex; align-items: center; gap: var(--s3); min-width: 300px; }
+.brand strong { display: block; color: var(--text-primary); font: 500 var(--text-lg)/1 var(--font-display); letter-spacing: var(--track-wide); }
+.brand span { display: block; margin-top: 4px; color: var(--text-muted); font: 400 var(--text-xs)/1 var(--font); letter-spacing: var(--track-tight); }
+.mini-core { width: 30px; height: 30px; border: 1px solid var(--line-accent); border-radius: 50%; position: relative; box-shadow: var(--glow-accent), var(--inset-highlight); background: linear-gradient(160deg, var(--accent-tint-10), transparent); }
+.mini-core::before, .mini-core::after, .mini-core i { content: ""; position: absolute; border-radius: 50%; }
+.mini-core::before { inset: 4px; border: 1px dashed var(--accent-tint-35); animation: spin 14s linear infinite; }
+.mini-core::after { inset: 10px; background: var(--accent); box-shadow: 0 0 12px var(--accent-tint-35); }
+.system-state { display: flex; align-items: center; justify-content: center; gap: var(--s2); flex: 1; }
+.system-state i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent-tint-35); }
+.system-state span { color: var(--text-secondary); font: 400 var(--text-sm)/1 var(--font); letter-spacing: var(--track-wide); }
+.top-actions { display: flex; align-items: center; gap: var(--s1); -webkit-app-region: no-drag; }
+.hud-button, .icon-button, .window-button { height: 34px; border: 1px solid transparent; border-radius: var(--r-sm); background: transparent; color: var(--text-secondary); font: 500 var(--text-sm)/1 var(--font); letter-spacing: var(--track-tight); transition: all var(--dur-fast) var(--ease); }
+.hud-button { padding: 0 var(--s3); }
+.hud-button b { color: var(--accent); margin-right: 6px; font-weight: 500; }
+.hud-button.active, .hud-button:hover { color: var(--accent-bright); border-color: var(--line-accent); background: var(--accent-tint-06); }
+.icon-button, .window-button { width: 37px; padding: 0; font-size: 15px; }
+.icon-button:hover, .window-button:hover { background: rgba(255, 255, 255, .06); color: var(--text-primary); }
+.window-button.close:hover { background: #b42c20; color: white; }
+
+/* ---------- stage ---------- */
+.workspace { position: relative; height: calc(100vh - 62px); overflow: hidden; }
+/* NOTHING sits on the sphere (Adam, 2026-07-28: "I dont want words on the orb
+   at all"), and the orb still has to be BIG ("yes make it bigger").
+   Those pull against each other, and the way out is that a skin does not fill
+   its canvas — it inscribes a circle in it and leaves the rest empty.
+
+   Plasma, the skin Adam runs, draws at `min(w, h) * 0.56` (src/orbs/plasma.js),
+   so on a wide window it is purely HEIGHT-bound and leaves ~22% of the canvas
+   clear above the sphere and ~22% below. The text lives in that natural gap,
+   painted over the canvas rather than carved out of it — which is why these
+   bands are now small breathing room, not text clearance. Every pixel here
+   used to come straight off the orb's diameter.
+
+   ⚠️ Clearance therefore depends on the SKIN's fill ratio, and the skins
+   differ a lot: Plasma fills 56% of its canvas, the original amber hologram
+   fills 88% (radius = h*.44 in hologram.js). On that skin the state text WILL
+   touch the sphere again, and the fix would be per-skin bands. Left undone
+   deliberately — Adam is on Plasma and asked for size. */
+.jarvis-stage { position: absolute; inset: 0 0 132px; --stage-top-band: 40px; --stage-bottom-band: 40px; transition: all var(--dur-slow) var(--ease); }
+#hologram { width: 100%; height: calc(100% - var(--stage-top-band) - var(--stage-bottom-band)); margin-top: var(--stage-top-band); display: block; transition: transform .72s var(--ease), opacity .45s, filter .45s; }
+/* z-index so it paints over the canvas: the text now overlays the sphere's
+   empty upper margin rather than sitting in space carved out of the canvas. */
+.central-copy { position: absolute; z-index: 4; left: 50%; top: 8px; bottom: auto; width: 280px; transform: translateX(-50%); text-align: center; pointer-events: none; transition: .4s ease; }
+.central-copy > span { display: block; color: var(--accent-bright); font: 500 var(--text-xs)/1 var(--font); letter-spacing: var(--track-wide); margin-bottom: var(--s2); text-transform: uppercase; }
+.central-copy > strong { display: block; color: var(--text-primary); font: 300 var(--text-display)/1.1 var(--font-display); letter-spacing: .14em; margin-left: .14em; text-shadow: 0 0 30px rgba(255, 178, 31, .35); }
+.audio-bars { height: 27px; display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: var(--s2); }
+.audio-bars i { width: 2.5px; height: 4px; border-radius: 2px; background: var(--accent); opacity: .8; }
+.listening .audio-bars i { animation: audio .65s ease-in-out infinite alternate; }
+.listening .audio-bars i:nth-child(2n) { animation-delay: -.2s }
+.listening .audio-bars i:nth-child(3n) { animation-delay: -.4s }
+.stage-label { position: absolute; z-index: 4; top: 22px; width: 190px; border-top: 1px solid var(--line); padding-top: var(--s2); }
+.stage-label.left { left: 28px }
+.stage-label.right { right: 28px; text-align: right }
+.stage-label span, .stage-label b { display: block; font: 400 var(--text-xs)/1.3 var(--font); letter-spacing: var(--track-tight) }
+.stage-label span { color: var(--text-muted) }
+.stage-label b { color: var(--text-secondary); margin-top: 4px; font-weight: 500 }
+
+.search-flight { position: absolute; inset: 0; z-index: 5; opacity: 0; pointer-events: none; transition: opacity .25s; }
+.flight-line { position: absolute; left: 50%; top: 50%; height: 1px; width: 1px; background: linear-gradient(90deg, var(--accent), transparent); transform-origin: left center; }
+.line-one { transform: rotate(15deg) }
+.line-two { transform: rotate(155deg) }
+.line-three { transform: rotate(230deg) }
+.line-four { transform: rotate(320deg) }
+.searching .search-flight { opacity: 1; }
+.searching .flight-line { animation: flight .75s cubic-bezier(.1, .8, .25, 1) forwards; }
+.searching #hologram { transform: scale(1.5); opacity: .08; filter: blur(4px); }
+.searching .central-copy { opacity: 0; transform: translateX(-50%) scale(1.4); }
+.reforming #hologram { animation: reform .8s var(--ease); }
+
+/* ---------- floating modules ---------- */
+/* Modules use the whole workspace, right to the bottom edge (Adam,
+   2026-08-04: "all the windows lock at that level they need to move full
+   screen. everything"). The 132px that used to be reserved here was for the
+   command bar, but that dock sits at z-index 40 -- above this layer -- and can
+   be closed outright, so reserving drag space for it only cost usable screen. */
+.module-layer { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
+.module { position: absolute; min-width: 260px; min-height: 190px; display: flex; flex-direction: column; pointer-events: auto; background: var(--surface-glass); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-soft), var(--inset-highlight); backdrop-filter: blur(20px); overflow: hidden; transition: opacity .25s, transform var(--dur-med) var(--ease), border-color var(--dur-fast), box-shadow var(--dur-med) var(--ease); }
+.module.hidden-module { display: none; }
+.module.collapsed { min-height: 56px !important; height: 56px !important; }
+.module.collapsed .module-content { display: none; }
+.module.spotlight { z-index: 30; box-shadow: var(--shadow-deep), var(--glow-accent), var(--inset-highlight); border-color: var(--line-accent); animation: assemble .55s var(--ease); }
+.module-header { flex: 0 0 56px; display: flex; align-items: center; justify-content: space-between; gap: var(--s2); padding: 0 var(--s3) 0 var(--s4); border-bottom: 1px solid var(--line); user-select: none; }
+.module-header span { display: block; color: var(--text-muted); font: 400 var(--text-xs)/1 var(--font); letter-spacing: var(--track-tight) }
+.module-header h2 { margin: 4px 0 0; color: var(--text-primary); font: 500 var(--text-md)/1.2 var(--font-display); letter-spacing: var(--track-tight) }
+.module-actions { display: flex; gap: 3px }
+.module-actions button { width: 26px; height: 26px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-muted); transition: all var(--dur-fast) var(--ease) }
+.module-actions button:hover { background: rgba(255, 255, 255, .07); color: var(--text-primary) }
+.module-content { flex: 1; min-height: 0; overflow: auto; padding: var(--s3); scrollbar-width: thin; scrollbar-color: var(--accent-tint-35) transparent; }
+.resize-handle { display: none; position: absolute; z-index: 5; right: 4px; bottom: 4px; width: 16px; height: 16px; cursor: nwse-resize; border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent); border-radius: 0 0 4px 0; opacity: .7 }
+.layout-editing .module { border-color: var(--line-accent); }
+.layout-editing .drag-handle { cursor: move; background: var(--accent-tint-06); }
+.layout-editing .resize-handle { display: block; }
+
+/* ---------- shared inputs + tasks ---------- */
+.inline-entry { height: 40px; display: grid; grid-template-columns: 1fr auto; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-input); overflow: hidden; }
+.inline-entry:focus-within { border-color: var(--line-accent); }
+.inline-entry input { min-width: 0; border: 0; outline: 0; background: transparent; padding: 0 var(--s3); color: var(--text-primary); font-size: var(--text-base) }
+.inline-entry input::placeholder { color: var(--text-muted) }
+.inline-entry button { width: 62px; border: 0; border-left: 1px solid var(--line); background: var(--accent-tint-06); color: var(--accent); font: 500 var(--text-sm)/1 var(--font); letter-spacing: var(--track-tight) }
+.inline-entry button:hover { background: var(--accent-tint-10) }
+.task-filters { display: flex; align-items: center; gap: 4px; margin: var(--s3) 0 var(--s2); }
+.task-filters button { border: 0; border-radius: var(--r-pill); background: transparent; color: var(--text-muted); font: 500 var(--text-xs)/1 var(--font); padding: 6px 10px; transition: all var(--dur-fast) var(--ease) }
+.task-filters button.active { color: var(--accent-bright); background: var(--accent-tint-10) }
+.task-filters span { margin-left: auto; color: var(--text-muted); font: 400 var(--text-xs)/1 var(--font) }
+.task-item { min-height: 48px; display: grid; grid-template-columns: 24px 1fr auto; gap: var(--s2); align-items: center; border-bottom: 1px solid var(--line); }
+.task-check { width: 18px; height: 18px; border: 1.5px solid var(--text-muted); background: transparent; border-radius: 6px; padding: 0; transition: all var(--dur-fast) var(--ease) }
+.task-check:hover, .task-item.done .task-check { border-color: var(--accent); background: var(--accent-tint-10) }
+.task-item.done .task-check { background: var(--accent); }
+.task-item.done .task-check::after { content: "âœ“"; color: #241703; font-size: 11px }
+.task-copy { min-width: 0 }
+.task-copy b, .task-copy span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.task-copy b { color: var(--text-primary); font-size: var(--text-base); font-weight: 400 }
+.task-copy span { color: var(--text-muted); font-size: var(--text-xs); margin-top: 3px }
+.task-item.done .task-copy { opacity: .45 }
+.task-item.done .task-copy b { text-decoration: line-through }
+.task-delete { border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-muted); font-size: 14px }
+.task-delete:hover { color: var(--danger); background: var(--danger-tint) }
+.empty-state { color: var(--text-muted); font: 400 var(--text-sm)/1.6 var(--font); text-align: center; padding: 28px 8px }
+
+/* ---------- file explorer ---------- */
+.explorer-content { display: grid; grid-template-rows: 40px 70px 26px 1fr; padding: 0; }
+.explorer-toolbar { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; border-bottom: 1px solid var(--line) }
+.explorer-toolbar button { height: 100%; border: 0; border-right: 1px solid var(--line); background: transparent; color: var(--text-secondary); font: 500 var(--text-sm) var(--font); padding: 0 var(--s3) }
+.explorer-toolbar button:hover { background: var(--accent-tint-06); color: var(--accent-bright) }
+.breadcrumb { min-width: 0; padding: 0 var(--s3); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text-muted); font: 400 var(--text-sm)/1 var(--font) }
+.search-visual { display: grid; grid-template-columns: 100px 1fr auto; gap: var(--s3); align-items: center; padding: 0 var(--s4); background: radial-gradient(circle at 55% 50%, var(--accent-tint-06), transparent 65%); border-bottom: 1px solid var(--line) }
+.path-tree { position: relative; height: 40px }
+.path-tree i { position: absolute; left: 0; top: 20px; height: 1px; background: var(--accent); width: 0 }
+.searching .path-tree i { animation: branch 1.2s ease-out infinite }
+.path-tree i:nth-child(2) { transform: rotate(18deg); animation-delay: -.2s }
+.path-tree i:nth-child(3) { transform: rotate(-18deg); animation-delay: -.4s }
+.path-tree i:nth-child(4) { transform: rotate(36deg); animation-delay: -.6s }
+.path-tree i:nth-child(5) { transform: rotate(-36deg); animation-delay: -.8s }
+.search-visual span, .search-visual strong { display: block; font-family: var(--font) }
+.search-visual span { color: var(--accent); font-size: var(--text-xs); letter-spacing: var(--track-tight) }
+.search-visual strong { color: var(--text-secondary); font-size: var(--text-sm); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.search-visual > b { color: var(--text-muted); font: 400 var(--text-xs)/1 var(--font) }
+.file-table-head, .file-row { display: grid; grid-template-columns: 1fr 115px 75px; gap: var(--s2); align-items: center }
+.file-table-head { padding: 0 var(--s3); color: var(--text-muted); font: 500 var(--text-xs)/1 var(--font); border-bottom: 1px solid var(--line) }
+.file-browser-list { overflow: auto }
+.file-row { width: 100%; min-height: 42px; padding: 5px var(--s3); border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; text-align: left; transition: background var(--dur-fast) }
+.file-row:hover, .file-row.match { background: var(--accent-tint-06) }
+.file-name { min-width: 0; display: grid; grid-template-columns: 22px 1fr; align-items: center; gap: 6px }
+.file-name i { color: var(--accent); font-style: normal }
+.file-name div { min-width: 0 }
+.file-name b, .file-name small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.file-name b { color: var(--text-primary); font-size: var(--text-base); font-weight: 400 }
+.file-name small { color: var(--text-muted); font-size: var(--text-xs); margin-top: 2px }
+.file-row > span { color: var(--text-muted); font-size: var(--text-xs) }
+
+/* ---------- telemetry / memory / activity / projects / shortcuts ---------- */
+.performance-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3) }
+.meter { aspect-ratio: 1; border-radius: 50%; display: grid; place-content: center; text-align: center; background: radial-gradient(circle, var(--surface-solid) 55%, transparent 57%), conic-gradient(var(--accent) calc(var(--value) * 1%), rgba(255, 255, 255, .08) 0) }
+.meter b { color: var(--accent-bright); font: 300 var(--text-display)/1 var(--font-display) }
+.meter span { color: var(--text-muted); font: 400 var(--text-xs)/1 var(--font); margin-top: 4px }
+.performance-grid dl { grid-column: 1/-1; margin: 0 }
+.performance-grid dl div { display: flex }
+.performance-grid dt, .performance-grid dd { display: inline-block; width: 49%; margin: 0; padding: 8px 0; border-bottom: 1px solid var(--line); font: 400 var(--text-sm)/1 var(--font) }
+.performance-grid dt { color: var(--text-muted) }
+.performance-grid dd { color: var(--text-secondary); text-align: right }
+.memory-item, .activity-item { padding: 10px 2px; border-bottom: 1px solid var(--line) }
+.memory-item b, .memory-item span, .activity-item b, .activity-item span { display: block }
+.memory-item b, .activity-item b { color: var(--text-primary); font-size: var(--text-base); font-weight: 400 }
+.memory-item span, .activity-item span { color: var(--text-muted); font-size: var(--text-xs); margin-top: 4px }
+.project-list { display: grid; gap: 6px }
+.project-list button { height: 46px; display: grid; grid-template-columns: 12px 1fr auto; align-items: center; text-align: left; border: 1px solid var(--line); border-radius: var(--r-sm); background: transparent; color: var(--text-secondary); padding: 0 var(--s3); transition: all var(--dur-fast) var(--ease) }
+.project-list button i { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted) }
+.project-list button span { font: 500 var(--text-base)/1 var(--font) }
+.project-list button b { font: 400 var(--text-xs)/1 var(--font); color: var(--text-muted) }
+.project-list button.active { border-color: var(--line-accent); background: var(--accent-tint-06); color: var(--accent-bright) }
+.project-list button.active i { background: var(--accent); box-shadow: 0 0 8px var(--accent-tint-35) }
+.quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px }
+.quick-grid button { height: 56px; border: 1px solid var(--line); border-radius: var(--r-sm); background: transparent; color: var(--text-secondary); font: 400 var(--text-sm)/1.4 var(--font); transition: all var(--dur-fast) var(--ease) }
+.quick-grid button span { display: block; color: var(--accent); font-size: var(--text-xs) }
+.quick-grid button:hover { border-color: var(--line-accent); background: var(--accent-tint-06) }
+.document-content { padding: 0 !important; overflow: auto !important }
+.document-content pre { min-height: 100%; margin: 0; padding: var(--s5); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-secondary); font: 400 var(--text-base)/1.7 var(--ui); background: linear-gradient(180deg, var(--accent-tint-06), transparent 22%) }
+[data-module="document-viewer"] .module-actions button:first-child { width: auto; padding: 0 var(--s2); font-size: var(--text-xs); color: var(--accent) }
+
+/* ---------- response dock ---------- */
+.response-dock { position: absolute; z-index: 40; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(850px, calc(100vw - 80px)); height: 112px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-glass); box-shadow: var(--shadow-deep), var(--inset-highlight); backdrop-filter: blur(20px); overflow: hidden; }
+/* The command bar is a module you can close â€” you only need to speak to him. */
+.response-dock.hidden-module { display: none }
+.dock-close { position: absolute; z-index: 2; top: 6px; right: 8px; width: 24px; height: 24px; display: grid; place-content: center; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-muted); font-size: 17px; line-height: 1; cursor: pointer; opacity: 0; transition: all var(--dur-fast) var(--ease) }
+.response-dock:hover .dock-close, .dock-close:focus-visible { opacity: 1 }
+.dock-close:hover { color: var(--text-primary); background: rgba(255, 255, 255, .07) }
+/* His live captions, in the clear band under the orb (Adam, 2026-07-28: "when
+   he speaks the captions should be at the bottom"). Clamped to the band on
+   purpose: a long reply must never grow upward onto the sphere, and the full
+   text is in the response dock and the daily transcript either way. */
+.orb-reply { position: absolute; z-index: 6; left: 50%; bottom: 14px; transform: translateX(-50%); margin: 0; width: min(620px, 76%); max-height: calc(var(--stage-bottom-band) - 22px); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; text-align: center; color: var(--text-primary); font: 400 var(--text-md)/1.6 var(--font); text-shadow: 0 2px 14px rgba(0, 0, 0, .9); text-wrap: pretty; pointer-events: none; transition: opacity var(--dur-med) var(--ease) }
+.orb-reply.fading { opacity: 0 }
+.orb-reply[hidden] { display: none }
+.response-line { height: 42px; display: grid; grid-template-columns: 72px 1fr; align-items: center; padding: 0 var(--s4); border-bottom: 1px solid var(--line) }
+.response-line span { color: var(--accent); font: 500 var(--text-xs)/1 var(--font); letter-spacing: var(--track-wide) }
+.response-line p { margin: 0; color: var(--text-secondary); font-size: var(--text-base); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.command-form { height: 46px; display: grid; grid-template-columns: 48px 28px 1fr 110px }
+.mic-button { border: 0; border-right: 1px solid var(--line); background: var(--accent-tint-06); color: var(--accent); transition: all var(--dur-fast) var(--ease) }
+.mic-button svg { width: 18px; fill: currentColor }
+.mic-button:hover, .recording .mic-button { color: #241703; background: var(--accent) }
+.prompt { display: grid; place-content: center; color: var(--accent); font: 500 13px monospace }
+.command-form input { min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text-primary); font: 400 var(--text-base) var(--font) }
+.command-form input::placeholder { color: var(--text-muted) }
+.execute-button { border: 0; border-left: 1px solid var(--line); background: var(--accent-tint-06); color: var(--accent); font: 500 var(--text-sm)/1 var(--font); letter-spacing: var(--track-tight); transition: all var(--dur-fast) var(--ease) }
+.execute-button:hover { background: var(--accent-tint-10) }
+.voice-line { height: 22px; display: flex; align-items: center; justify-content: center; gap: 7px; border-top: 1px solid var(--line) }
+.voice-line i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent) }
+.voice-line span { color: var(--text-muted); font: 400 var(--text-xs)/1 var(--font) }
+
+/* ---------- module drawer ---------- */
+.module-drawer { position: fixed; z-index: 70; top: 62px; right: -390px; bottom: 0; width: 380px; padding: var(--s5); background: rgba(10, 11, 12, .92); backdrop-filter: blur(24px); border-left: 1px solid var(--line-strong); box-shadow: var(--shadow-deep); transition: right var(--dur-med) var(--ease); overflow-y: auto; overscroll-behavior: contain; }
+.module-drawer.open { right: 0 }
+.module-drawer header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--line); padding-bottom: var(--s4) }
+.module-drawer header span { color: var(--accent); font: 500 var(--text-xs) var(--font); letter-spacing: var(--track-wide) }
+.module-drawer h2 { margin: 5px 0 0; font: 500 var(--text-lg) var(--font-display) }
+.module-drawer header button { border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-muted); font-size: 22px }
+.module-drawer header button:hover { color: var(--text-primary); background: rgba(255, 255, 255, .07) }
+.module-drawer > p { color: var(--text-muted); font-size: var(--text-sm); line-height: 1.5 }
+.module-options { display: grid; gap: 6px }
+.module-options > button { height: 60px; display: grid; grid-template-columns: 28px 1fr; align-items: center; text-align: left; border: 1px solid var(--line); border-radius: var(--r-sm); background: transparent; padding: 0 var(--s3); transition: all var(--dur-fast) var(--ease) }
+.module-options > button > i { width: 16px; height: 16px; border: 1.5px solid var(--text-muted); border-radius: 5px; display: grid; place-content: center; color: var(--accent); font-style: normal; font-size: 10px }
+.module-options > button.enabled { border-color: var(--line-accent); background: var(--accent-tint-06) }
+.module-options > button.enabled > i { border-color: var(--accent) }
+.module-options b, .module-options small { display: block }
+.module-options b { color: var(--text-primary); font: 500 var(--text-base) var(--font) }
+.module-options small { color: var(--text-muted); font-size: var(--text-xs); margin-top: 3px }
+.drawer-reset { width: 100%; height: 40px; margin-top: var(--s3); border: 1px solid var(--line-accent); border-radius: var(--r-sm); background: transparent; color: var(--accent); font: 500 var(--text-sm) var(--font) }
+.drawer-reset:hover { background: var(--accent-tint-06) }
+
+/* ---------- dialogs ---------- */
+dialog { color: var(--text-primary) }
+dialog::backdrop { background: rgba(0, 0, 0, .7); backdrop-filter: blur(10px) }
+.settings-modal { width: min(900px, calc(100vw - 60px)); max-height: calc(100vh - 60px); padding: 0; border: 1px solid var(--line-strong); border-radius: var(--r-lg); background: var(--surface-solid); box-shadow: var(--shadow-deep) }
+.settings-modal form > header { height: 66px; display: flex; align-items: center; justify-content: space-between; padding: 0 var(--s5); border-bottom: 1px solid var(--line) }
+.settings-modal header span { color: var(--accent); font: 500 var(--text-xs) var(--font); letter-spacing: var(--track-wide) }
+.settings-modal header h2 { margin: 5px 0 0; font: 500 var(--text-lg) var(--font-display) }
+.settings-modal header button { border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-muted); font-size: 23px }
+.settings-modal header button:hover { color: var(--text-primary); background: rgba(255, 255, 255, .07) }
+.settings-tabs { display: flex; gap: 6px; padding: var(--s3) var(--s5); border-bottom: 1px solid var(--line) }
+.settings-tabs button { background: none; border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--text-muted); font: 500 var(--text-xs)/1 var(--font); letter-spacing: var(--track-wide); padding: 8px 14px; cursor: pointer; transition: all var(--dur-fast) var(--ease) }
+.settings-tabs button:hover { color: var(--text-primary); border-color: var(--line-strong) }
+.settings-tabs button.active { color: var(--accent); border-color: var(--line-accent); background: var(--accent-tint-06) }
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s4); padding: var(--s4); max-height: calc(100vh - 254px); overflow: auto }
+.settings-grid section { border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--s4); background: rgba(255, 255, 255, .015) }
+.settings-grid h3 { margin: 0 0 var(--s3); color: var(--accent); font: 500 var(--text-sm) var(--font); letter-spacing: var(--track-wide); text-transform: uppercase }
+.settings-grid small { display: block; color: var(--text-muted); font-size: var(--text-xs); line-height: 1.5; margin-top: var(--s2) }
+.setup-status { display: grid; grid-template-columns: 12px 1fr; gap: var(--s2); align-items: center; margin-bottom: var(--s3) }
+.setup-status i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent-tint-35) }
+.setup-status b, .setup-status span { display: block }
+.setup-status b { color: var(--text-primary); font: 500 var(--text-base) var(--font) }
+.setup-status span { color: var(--text-muted); font-size: var(--text-xs); margin-top: 3px }
+.primary-action, .outline-action { height: 36px; border: 1px solid var(--line-accent); border-radius: var(--r-sm); background: var(--accent-tint-10); color: var(--accent-bright); font: 500 var(--text-sm) var(--font); padding: 0 var(--s3); transition: all var(--dur-fast) var(--ease) }
+.primary-action:hover { background: var(--accent-tint-20) }
+.outline-action { background: transparent; border-color: var(--line); color: var(--text-secondary) }
+.outline-action:hover { border-color: var(--line-strong); color: var(--text-primary) }
+.settings-grid label { display: block; color: var(--text-secondary); font: 500 var(--text-sm) var(--font); margin-top: var(--s3) }
+.settings-grid input:not([type=checkbox]), .settings-grid select { width: 100%; height: 36px; margin-top: 6px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-input); color: var(--text-primary); outline: 0; padding: 0 var(--s2); font-size: var(--text-base) }
+.settings-grid input:not([type=checkbox]):focus, .settings-grid select:focus { border-color: var(--line-accent) }
+/* min-height, never a fixed height: a description that wraps to two lines used
+   to spill out of the box and collide with the next row's title. */
+.toggle-row { min-height: 46px; padding: 6px 0; display: grid !important; grid-template-columns: 1fr 40px; align-items: center; margin: 0 !important; border-bottom: 1px solid var(--line) }
+.toggle-row span b, .toggle-row span small { display: block }
+.toggle-row span b { color: var(--text-primary); font: 500 var(--text-base) var(--font) }
+.toggle-row span small { margin: 3px 0 0; font-size: var(--text-xs) }
+.toggle-row input { display: none }
+.toggle-row i { width: 36px; height: 20px; border: 1.5px solid var(--text-muted); border-radius: var(--r-pill); position: relative; transition: all var(--dur-fast) var(--ease) }
+.toggle-row i::after { content: ""; position: absolute; left: 3px; top: 2.5px; width: 11px; height: 11px; border-radius: 50%; background: var(--text-muted); transition: all var(--dur-fast) var(--ease) }
+.toggle-row input:checked + i { border-color: var(--accent); background: var(--accent-tint-20) }
+.toggle-row input:checked + i::after { left: 18px; background: var(--accent) }
+.folder-setting { height: 44px; display: grid; grid-template-columns: 1fr auto; gap: var(--s2); align-items: center; border-bottom: 1px solid var(--line) }
+.folder-setting b, .folder-setting small { display: block; max-width: 270px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.folder-setting b { color: var(--text-primary); font: 500 var(--text-base) var(--font) }
+.folder-setting small { margin: 3px 0 0; font-size: var(--text-xs) }
+.folder-setting button { border: 1px solid var(--line-accent); border-radius: var(--r-sm); background: transparent; color: var(--accent); font: 500 var(--text-xs) var(--font); padding: 7px 10px }
+.wide-setting { grid-column: 1/-1 }
+/* Was an inline style attribute, which the page's CSP blocks â€” bullets and
+   default list padding leaked through. Lives in CSS now. */
+#schedule-list { list-style: none; margin: 12px 0 0; padding: 0 }
+.search-root { height: 32px; display: grid; grid-template-columns: 1fr 24px; align-items: center; border-bottom: 1px solid var(--line); color: var(--text-secondary); font-size: var(--text-sm) }
+.search-root span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.search-root button { border: 0; background: transparent; color: var(--danger) }
+.settings-modal form > footer { height: 63px; display: flex; align-items: center; justify-content: space-between; padding: 0 var(--s5); border-top: 1px solid var(--line) }
+.settings-modal footer > span { color: var(--text-muted); font-size: var(--text-sm) }
+.settings-modal footer button { height: 36px; border: 1px solid var(--line); border-radius: var(--r-sm); background: transparent; color: var(--text-secondary); font: 500 var(--text-sm) var(--font); padding: 0 var(--s3); margin-left: 6px; transition: all var(--dur-fast) var(--ease) }
+.settings-modal footer button:hover { color: var(--text-primary); border-color: var(--line-strong) }
+.settings-modal footer .save-button { border-color: var(--line-accent); background: var(--accent-tint-10); color: var(--accent-bright) }
+.settings-modal footer .save-button:hover { background: var(--accent-tint-20) }
+.approval-modal { width: 420px; padding: var(--s6); text-align: center; border: 1px solid rgba(255, 102, 92, .4); border-radius: var(--r-lg); background: var(--surface-solid); box-shadow: var(--shadow-deep) }
+.warning { width: 46px; height: 46px; border: 1.5px solid var(--danger); border-radius: var(--r-md); display: grid; place-content: center; margin: 0 auto var(--s4); color: var(--danger); font-size: 22px; transform: rotate(45deg) }
+.warning > * { transform: rotate(-45deg) }
+.approval-modal > span { color: var(--danger); font: 500 var(--text-xs) var(--font); letter-spacing: var(--track-wide) }
+.approval-modal h2 { font: 500 var(--text-lg) var(--font-display) }
+/* pre-wrap so the console's card can put the exact command on its own line —
+   a confirmation that reflows the command is a worse confirmation. */
+.approval-modal p { color: var(--text-secondary); font-size: var(--text-base); white-space: pre-wrap }
+.approval-modal > div:last-child { display: flex; justify-content: center; gap: var(--s2) }
+.approval-modal button { width: 124px; height: 38px; border: 1px solid var(--line); border-radius: var(--r-sm); background: transparent; color: var(--text-secondary); font: 500 var(--text-sm) var(--font) }
+#approval-accept { border-color: var(--danger); color: #ff9992; background: var(--danger-tint) }
+/* First-run naming. Above everything (z 200): nothing else in the
+   app matters until he has a name. [hidden] wins via the global guard. */
+.naming-screen { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: rgba(4, 5, 6, .94); backdrop-filter: blur(18px) }
+.naming-card { width: 460px; max-width: calc(100vw - 48px); padding: var(--s7) var(--s6); border: 1px solid var(--line-strong); border-radius: var(--r-lg); background: var(--surface-solid); box-shadow: var(--shadow-deep); text-align: center }
+.naming-kicker { color: var(--accent-bright); font: 500 var(--text-xs) var(--font); letter-spacing: var(--track-wide) }
+.naming-card h2 { margin: var(--s3) 0 var(--s2); font: 500 var(--text-xl) var(--font-display) }
+.naming-card p { color: var(--text-secondary); font-size: var(--text-base) }
+.naming-card input { width: 100%; margin-top: var(--s4); padding: var(--s3); text-align: center; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: transparent; color: var(--text-primary); font: 500 var(--text-lg) var(--font-display); letter-spacing: .08em }
+.naming-card input:focus { border-color: var(--line-accent); outline: none }
+.naming-actions { display: flex; justify-content: center; gap: var(--s2); margin-top: var(--s5) }
+.naming-actions button { min-width: 130px; height: 38px; padding: 0 var(--s3); border-radius: var(--r-sm); font: 500 var(--text-sm) var(--font); cursor: pointer }
+.naming-primary { border: 1px solid var(--line-accent); background: var(--accent-tint-10); color: var(--accent-bright) }
+.naming-primary:hover { background: var(--accent-tint-20) }
+.naming-ghost { border: 1px solid var(--line); background: transparent; color: var(--text-secondary) }
+.naming-ghost:hover { color: var(--text-primary); border-color: var(--line-strong) }
+.naming-meter { height: 6px; margin-top: var(--s4); border: 1px solid var(--line); border-radius: 3px; overflow: hidden }
+.naming-meter i { display: block; height: 100%; width: 0%; background: var(--accent-bright); transition: width 80ms linear }
+.naming-verdict { min-height: 1.4em; margin-top: var(--s3); font-size: var(--text-base) }
+.naming-verdict.good { color: var(--success) }
+.naming-verdict.bad { color: var(--danger) }
+
+.toast { position: fixed; z-index: 90; left: 50%; bottom: -80px; transform: translateX(-50%); min-width: 290px; max-width: 600px; padding: var(--s3) var(--s4); border: 1px solid var(--line-strong); border-radius: var(--r-md); background: rgba(10, 11, 12, .95); backdrop-filter: blur(16px); color: var(--text-primary); font-size: var(--text-base); text-align: center; box-shadow: var(--shadow-deep); transition: bottom var(--dur-med) var(--ease) }
+.toast.show { bottom: 28px }
+
+/* ---------- keyframes ---------- */
+@keyframes spin { to { transform: rotate(360deg) } }
+@keyframes audio { from { height: 3px } to { height: 22px } }
+@keyframes flight { 0% { width: 0; opacity: 0 } 20% { opacity: 1 } 100% { width: 70vw; opacity: 0 } }
+@keyframes branch { 0% { width: 0; opacity: 0 } 50% { opacity: 1 } 100% { width: 90px; opacity: 0 } }
+@keyframes assemble { from { opacity: 0; transform: scale(.9); filter: blur(6px) } to { opacity: 1; transform: scale(1); filter: none } }
+@keyframes reform { 0% { opacity: .1; transform: scale(1.5) } 55% { opacity: 1; transform: scale(.94) } 100% { transform: scale(1) } }
+
+@media(max-width:1100px) { .brand { min-width: 220px } .hud-button { padding: 0 8px } .stage-label { display: none } .response-dock { width: calc(100vw - 36px) } .settings-grid { grid-template-columns: 1fr } .wide-setting { grid-column: auto } }
+/* On a short screen the bands give up what little they hold — the sphere's own
+   inscribed margin is doing the clearance work, and every pixel here is orb. */
+@media(max-height:720px) { .topbar { height: 52px } .workspace { height: calc(100vh - 52px) } .module-drawer { top: 52px } .jarvis-stage { bottom: 110px } .jarvis-stage { --stage-top-band: 16px; --stage-bottom-band: 20px } .central-copy { top: 4px } .response-dock { height: 96px } .response-line { height: 34px } .command-form { height: 40px } .voice-line { height: 18px } }
+
+#connect-ollama { margin-right: 5px }
+#connect-ollama:disabled { opacity: .65; cursor: wait }
+
+/* ---------- diagnostics ---------- */
+.diagnostics-modal { width: min(560px, calc(100vw - 60px)); color: var(--text-primary); border-radius: var(--r-lg); border: 1px solid var(--line-strong); background: var(--surface-solid); box-shadow: var(--shadow-deep) }
+.diagnostics-modal > header { height: 66px; display: flex; align-items: center; justify-content: space-between; padding: 0 var(--s5); border-bottom: 1px solid var(--line) }
+.diagnostics-modal > header button { width: 32px; height: 32px; border: 0; border-radius: var(--r-sm); background: none; color: var(--text-secondary); cursor: pointer }
+.diagnostics-modal > header button:hover { color: var(--text-primary); background: rgba(255, 255, 255, .07) }
+.diagnostics-intro { margin: var(--s4) var(--s5) var(--s1); font-size: var(--text-base); color: var(--text-secondary) }
+.diagnostic-rows { display: flex; flex-direction: column; gap: 6px; padding: var(--s3) var(--s5) }
+.diagnostic-row { display: flex; align-items: center; gap: var(--s3); padding: 10px var(--s3); border: 1px solid var(--line); border-radius: var(--r-sm); background: rgba(255, 255, 255, .02) }
+.diagnostic-row i { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent-tint-35); flex: none }
+.diagnostic-row.pass i { background: var(--success); box-shadow: 0 0 8px var(--success-tint) }
+.diagnostic-row.fail i { background: var(--danger); box-shadow: 0 0 8px var(--danger-tint) }
+.diagnostic-row b { display: block; font: 500 var(--text-base) var(--font) }
+.diagnostic-row span { display: block; font-size: var(--text-sm); color: var(--text-secondary); word-break: break-word }
+.diagnostic-live { padding: 6px var(--s5) }
+.mic-meter { display: flex; align-items: center; gap: var(--s3) }
+.mic-meter span { font: 500 var(--text-sm) var(--font); color: var(--accent) }
+.meter-track { flex: 1; height: 8px; border: 1px solid var(--line-accent); border-radius: var(--r-pill); background: var(--surface-input); overflow: hidden }
+.meter-track i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--success), var(--accent)); transition: width .08s linear }
+#diagnostic-result { margin: var(--s3) 0 0; min-height: 32px; font-size: var(--text-base); color: var(--accent-bright) }
+.diagnostic-actions { display: flex; flex-wrap: wrap; gap: var(--s2); padding: var(--s2) var(--s5) var(--s5) }
+.diagnostic-actions button { cursor: pointer }
+
+/* ---------- task priority, edit, memory search ---------- */
+.layout-editing .edge-grip { background: var(--accent-tint-20) }
+.layout-editing .module { outline: 1px dashed var(--accent-tint-35) }
+.task-priority { margin: 2px 0; padding: 2px 8px; width: max-content; border: 1px solid var(--line-accent); border-radius: var(--r-pill); background: none; font: 500 var(--text-xs)/1.3 var(--font); color: var(--accent-bright); cursor: pointer; text-transform: lowercase }
+.task-priority.high { border-color: var(--danger); color: #ff8d85 }
+.task-priority.low { opacity: .55 }
+.task-edit { background: var(--surface-input); border: 1px solid var(--line-accent); border-radius: var(--r-sm); color: var(--text-primary); font: inherit; padding: 4px 8px; width: 100% }
+.memory-search { margin: var(--s2) 0 var(--s1); width: 100%; background: var(--surface-input); border: 1px solid var(--line); border-radius: var(--r-sm); color: var(--text-primary); font-size: var(--text-sm); padding: 7px 10px; outline: 0 }
+.memory-search:focus { border-color: var(--line-accent) }
+.memory-search::placeholder { color: var(--text-muted) }
+.memory-item { position: relative }
+.memory-item .task-delete { position: absolute; top: 4px; right: 4px }
+.memory-item b { cursor: text; padding-right: 20px; display: block }
+.file-section { padding: var(--s2) var(--s3) 4px; font: 500 var(--text-xs)/1 var(--font); letter-spacing: var(--track-wide); color: var(--accent); text-transform: uppercase; opacity: .85 }
+#file-pin { min-width: 26px }
+#file-watch { min-width: 26px }
+#file-watch.active { color: var(--success); border-color: rgba(97, 239, 178, .5) }
+.ai-stop { display: none; margin-left: 10px; padding: 4px 12px; border: 1px solid rgba(255, 102, 92, .5); border-radius: var(--r-pill); background: none; color: #ff8d85; font: 500 var(--text-xs)/1 var(--font); cursor: pointer; flex: none }
+.ai-stop:hover { background: var(--danger-tint) }
+body.busy .ai-stop { display: inline-block }
+
+/* ---------- screen privacy + action timeline ---------- */
+.screen-privacy { position: fixed; top: 56px; left: 50%; transform: translateX(-50%); z-index: 200; display: none; align-items: center; gap: var(--s2); padding: 8px var(--s4); background: rgba(20, 8, 7, .9); backdrop-filter: blur(16px); border: 1px solid var(--danger); color: #ff9a92; font: 500 var(--text-sm)/1 var(--font); letter-spacing: var(--track-tight); border-radius: var(--r-pill); box-shadow: 0 0 24px rgba(255, 102, 92, .25) }
+.screen-privacy.visible { display: flex }
+.screen-privacy i { width: 9px; height: 9px; border-radius: 50%; background: var(--danger); animation: pulse-dot 1s infinite }
+@keyframes pulse-dot { 0%, 100% { opacity: 1 } 50% { opacity: .3 } }
+.action-timeline { position: fixed; bottom: 120px; left: 16px; z-index: 150; display: flex; flex-direction: column; gap: 4px; pointer-events: none }
+.timeline-item { padding: 6px 12px; background: rgba(16, 15, 13, .85); backdrop-filter: blur(12px); border: 1px solid var(--line); border-left: 2px solid var(--accent); border-radius: 0 var(--r-sm) var(--r-sm) 0; color: var(--accent-bright); font: 400 var(--text-sm)/1.4 var(--font); opacity: 1; transition: opacity .5s; max-width: 260px }
+.timeline-item.fade { opacity: .5 }
+
+/* Readable responses: the dock grows with the answer instead of clipping it. */
+.response-dock { height: auto }
+.response-line { height: auto; min-height: 42px; max-height: min(300px, 42vh); overflow-y: auto; align-items: start; padding: 12px var(--s4) }
+.response-line span { padding-top: 2px }
+.response-line p { white-space: pre-wrap; overflow: visible; text-overflow: clip; font-size: var(--text-base); line-height: 1.6 }
+.response-line::-webkit-scrollbar { width: 6px }
+.response-line::-webkit-scrollbar-thumb { background: var(--accent-tint-20); border-radius: var(--r-pill) }
+
+/* ---------- cameras module ---------- */
+.cameras-content { display: flex; flex-direction: column; gap: var(--s2); overflow: auto }
+.camera-add-form { display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--s3) }
+.camera-hint { font: 400 var(--text-sm)/1.5 var(--ui); color: var(--text-secondary); margin: 0 }
+.camera-add-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px }
+/* These were raw browser buttons before â€” grey boxes in an amber app. */
+.camera-add-actions button { height: 36px; border: 1px solid var(--line); border-radius: var(--r-sm); background: transparent; color: var(--text-secondary); font: 500 var(--text-sm) var(--font); padding: 0 var(--s3); transition: all var(--dur-fast) var(--ease) }
+.camera-add-actions button:hover { border-color: var(--line-strong); color: var(--text-primary) }
+#camera-add-save, #blink-signin, #blink-verify, #ring-signin, #ring-verify, #nest-signin { border-color: var(--line-accent); background: var(--accent-tint-10); color: var(--accent-bright) }
+/* Inside Settings the panel sits in a bordered section already. */
+.settings-grid .camera-add-form { border: 0; border-radius: 0; padding: 0; margin-top: var(--s3) }
+.camera-status { font: 400 var(--text-sm)/1.4 var(--ui); color: var(--accent); margin: 0; min-height: 14px }
+/* ---------- camera tiles: the picture IS the tile ----------
+   Name, time, source and controls ride on the image behind gradient
+   scrims, so nothing competes with the view for width â€” the old toolbar
+   row squeezed "Front Door" down to "Frâ€¦". */
+/* align-items:start â€” otherwise a tile with an AI read stretches its
+   neighbours to match and they end in a slab of dead black. */
+.camera-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--s3); align-items: start }
+.camera-empty { font: 400 var(--text-sm)/1.6 var(--ui); color: var(--text-secondary); opacity: .8 }
+/* An empty module should still say something useful. */
+.camera-none { grid-column: 1/-1; display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--s2); padding: var(--s5) var(--s4); border: 1px dashed var(--line); border-radius: var(--r-md) }
+.camera-none svg { fill: none; stroke: var(--text-muted); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round }
+.camera-none b { color: var(--text-primary); font: 500 var(--text-md)/1.2 var(--font-display) }
+.camera-none p { margin: 0; max-width: 34ch; color: var(--text-muted); font: 400 var(--text-sm)/1.55 var(--ui); text-wrap: pretty }
+.camera-none-cta { margin-top: var(--s1); border: 1px solid var(--line-accent); border-radius: var(--r-pill); background: var(--accent-tint-10); color: var(--accent-bright); font: 500 var(--text-xs)/1 var(--ui); letter-spacing: var(--track-wide); padding: 9px 16px; cursor: pointer; transition: all var(--dur-fast) var(--ease) }
+.camera-none-cta:hover { background: var(--accent); color: #140d00; border-color: var(--accent) }
+.camera-tile { border-radius: var(--r-md); background: #000; overflow: hidden; box-shadow: var(--shadow-soft), var(--inset-highlight); transition: box-shadow var(--dur-fast) var(--ease) }
+.camera-tile:hover { box-shadow: var(--shadow-soft), var(--inset-highlight), 0 0 0 1px var(--line-accent) }
+.camera-view { position: relative; aspect-ratio: 16/9; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden }
+.camera-view img, .camera-view video { width: 100%; height: 100%; object-fit: cover }
+.camera-view::before, .camera-view::after { content: ""; position: absolute; left: 0; right: 0; pointer-events: none; opacity: .95 }
+/* Enough to keep white text legible, not so much that it eats the night. */
+.camera-view::before { top: 0; height: 38%; background: linear-gradient(180deg, rgba(0,0,0,.62), transparent) }
+.camera-view::after { bottom: 0; height: 42%; background: linear-gradient(0deg, rgba(0,0,0,.72), transparent 92%) }
+/* Sits clear of the centre play button instead of underneath it. */
+.camera-view-empty { position: absolute; left: 0; right: 0; top: calc(50% + 36px); text-align: center; font: 500 var(--text-xs)/1 var(--ui); letter-spacing: var(--track-wide); color: var(--text-muted); text-transform: uppercase }
+
+.camera-top { position: absolute; z-index: 2; top: var(--s2); left: var(--s2); right: var(--s2); display: flex; align-items: center; justify-content: space-between; gap: var(--s2) }
+.camera-source { display: flex; align-items: center; gap: 6px }
+.camera-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success) }
+.camera-brand { font: 500 var(--text-xs)/1 var(--ui); letter-spacing: var(--track-wide); color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.7) }
+.camera-acts { display: flex; gap: 6px }
+.camera-icon { width: 30px; height: 30px; display: grid; place-content: center; border-radius: 50%; border: 1px solid rgba(255,255,255,.18); background: rgba(10,9,8,.55); backdrop-filter: blur(10px); color: var(--text-primary); cursor: pointer; transition: all var(--dur-fast) var(--ease) }
+.camera-icon svg { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round }
+.camera-icon:hover { background: var(--accent); border-color: var(--accent); color: #140d00 }
+.camera-icon:active { transform: scale(.94) }
+
+.camera-live { position: absolute; z-index: 2; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 52px; height: 52px; display: grid; place-content: center; border-radius: 50%; border: 1px solid rgba(255,255,255,.22); background: rgba(10,9,8,.42); backdrop-filter: blur(12px); color: #fff; cursor: pointer; transition: all var(--dur-fast) var(--ease) }
+.camera-live:hover { background: var(--accent); border-color: var(--accent); color: #140d00; transform: translate(-50%, -50%) scale(1.06) }
+.camera-live:active { transform: translate(-50%, -50%) scale(.97) }
+.camera-live svg { margin-left: 2px }
+.camera-live-stop svg, .camera-live-wait { display: none }
+.camera-live-wait { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25); border-top-color: #fff; animation: spin 720ms linear infinite }
+.camera-tile[data-live="on"] .camera-live-play, .camera-tile[data-live="connecting"] .camera-live-play { display: none }
+.camera-tile[data-live="on"] .camera-live-stop svg { display: block }
+.camera-tile[data-live="connecting"] .camera-live-wait { display: block }
+.camera-tile[data-live="on"] .camera-live { background: rgba(10,9,8,.62) }
+
+.camera-caption { position: absolute; z-index: 2; left: var(--s3); right: var(--s3); bottom: 10px; display: flex; align-items: baseline; justify-content: space-between; gap: var(--s2) }
+.camera-name { min-width: 0; color: #fff; font: 500 var(--text-md)/1.2 var(--font-display); letter-spacing: var(--track-tight); text-shadow: 0 1px 6px rgba(0,0,0,.8); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.camera-time { flex: none; color: rgba(255,255,255,.62); font: 400 var(--text-xs)/1 var(--ui); font-variant-numeric: tabular-nums; letter-spacing: var(--track-tight) }
+
+/* Disconnect hides here, and asks twice â€” it drops the whole account. */
+.camera-menu { position: absolute; z-index: 3; top: 46px; right: var(--s2); max-width: calc(100% - var(--s4)); border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: rgba(10,9,8,.94); backdrop-filter: blur(12px); box-shadow: var(--shadow-deep); padding: 4px }
+.camera-menu[hidden] { display: none }
+.camera-remove { display: block; width: 100%; text-align: left; border: 0; border-radius: 6px; background: transparent; color: var(--danger); font: 500 var(--text-xs)/1.4 var(--ui); padding: 8px 10px; cursor: pointer }
+.camera-remove:hover { background: var(--danger-tint) }
+.camera-remove.confirming { background: var(--danger-tint); color: #ffb3ad }
+
+/* What JARVIS says gets its own band and its own voice â€” a motion alert
+   must never look like a timestamp, and an error must never look calm. */
+.camera-read { display: grid; grid-template-columns: 14px 1fr; gap: var(--s2); align-items: start; padding: 10px var(--s3) 12px; background: var(--accent-tint-06); border-top: 1px solid var(--line-accent) }
+.camera-read[hidden] { display: none }
+.camera-read svg { margin-top: 2px; fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round }
+.camera-stamp { margin: 0; color: var(--text-primary); font: 400 var(--text-sm)/1.55 var(--ui); text-wrap: pretty }
+.camera-read[data-tone="alert"] { background: var(--accent-tint-10); border-top-color: var(--accent) }
+.camera-read[data-tone="error"] { background: var(--danger-tint); border-top-color: rgba(255,102,92,.35) }
+.camera-read[data-tone="error"] svg { stroke: var(--danger) }
+.camera-read[data-tone="error"] .camera-stamp { color: #ffb3ad }
+.camera-read[data-tone="thinking"] .camera-stamp { color: var(--text-secondary) }
+.camera-read[data-tone="thinking"] svg { animation: camera-think 1.4s ease-in-out infinite }
+@keyframes camera-think { 0%, 100% { opacity: .35; transform: scale(.9) } 50% { opacity: 1; transform: scale(1.08) } }
+
+/* Fetching a fresh picture sweeps the frame instead of freezing it. */
+.camera-tile[data-loading="on"] .camera-view::after { background: linear-gradient(0deg, rgba(0,0,0,.82), transparent), linear-gradient(90deg, transparent, var(--accent-tint-10), transparent); background-size: 100% 100%, 40% 100%; background-repeat: no-repeat; background-position: 0 0, -40% 0; animation: camera-sweep 1.1s var(--ease) infinite }
+@keyframes camera-sweep { to { background-position: 0 0, 140% 0 } }
+.camera-brand-tabs { display: flex; gap: 4px; margin-bottom: 4px }
+.camera-brand-tabs button { background: none; border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--text-muted); font: 500 var(--text-xs)/1 var(--ui); padding: 7px 12px; cursor: pointer; transition: all var(--dur-fast) var(--ease) }
+.camera-brand-tabs button.active { color: var(--accent); border-color: var(--line-accent); background: var(--accent-tint-06) }
+.camera-pane { display: flex; flex-direction: column; gap: 6px }
+/* A class-level `display:flex` beats the browser's own [hidden] rule, so every
+   brand pane and every conditional row rendered at once â€” all four sign-ins
+   stacked on top of each other. These put the hidden attribute back in charge. */
+.camera-pane[hidden], .camera-add-actions[hidden] { display: none }
+/* A reading and a button must not look like the same thing: state is a
+   pill you can't press, the action is the only button in the row. */
+.camera-systems { display: flex; flex-direction: column; gap: 6px }
+.camera-system { display: flex; align-items: center; gap: var(--s3); border: 1px solid var(--line); border-radius: var(--r-md); background: rgba(255, 255, 255, .015); padding: 10px var(--s3) }
+.camera-system-name { font: 500 var(--text-base)/1 var(--ui); color: var(--text-primary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.camera-system-state { display: inline-flex; align-items: center; gap: 6px; border-radius: var(--r-pill); padding: 5px 10px; background: rgba(255, 255, 255, .05); color: var(--text-muted); font: 500 var(--text-xs)/1 var(--ui); letter-spacing: var(--track-wide); text-transform: uppercase }
+.camera-system-state::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor }
+.camera-system-state.armed { background: var(--success-tint); color: var(--success) }
+.camera-arm { flex: none; background: transparent; border: 1px solid var(--line-strong); border-radius: var(--r-sm); color: var(--text-secondary); font: 500 var(--text-xs)/1 var(--ui); letter-spacing: var(--track-wide); padding: 8px 12px; cursor: pointer; transition: all var(--dur-fast) var(--ease) }
+.camera-arm:hover { border-color: var(--accent); color: var(--accent) }
+.camera-arm:active { transform: translateY(1px) }
+.camera-arm.confirming { background: var(--accent-tint-20); border-color: var(--accent); color: var(--accent-bright) }
+
+/* This button carries a word, so it can't live in the 26px icon box. */
+#camera-add-toggle { width: auto; height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--text-secondary); font: 500 var(--text-xs)/1 var(--ui); letter-spacing: var(--track-wide); white-space: nowrap }
+#camera-add-toggle:hover { border-color: var(--line-accent); color: var(--accent); background: var(--accent-tint-06) }
+
+/* ---------- autonomy cards ---------- */
+#autonomy-cards { position: absolute; right: 28px; bottom: 150px; z-index: 24; display: flex; flex-direction: column; gap: var(--s2); width: 272px; pointer-events: none; }
+.autonomy-card { display: flex; gap: var(--s3); align-items: center; padding: var(--s3); pointer-events: auto; cursor: pointer; background: var(--surface-glass); backdrop-filter: blur(20px); border: 1px solid var(--line-accent); border-radius: var(--r-md); box-shadow: var(--shadow-soft), var(--inset-highlight); animation: assemble .45s var(--ease); }
+.autonomy-card img { width: 64px; height: 48px; object-fit: cover; border: 1px solid var(--line); border-radius: var(--r-sm) }
+.autonomy-card b { display: block; color: var(--accent); font: 500 var(--text-xs)/1 var(--font); letter-spacing: var(--track-wide); text-transform: uppercase }
+.autonomy-card span { display: block; margin-top: 5px; color: var(--text-secondary); font-size: var(--text-sm); line-height: 1.4 }
+
+/* ---------- password reveal toggle ---------- */
+.pw-field { position: relative; display: flex; align-items: stretch; }
+.pw-field > input { flex: 1; min-width: 0; }
+.settings-grid .pw-field { margin-top: 6px; }
+.settings-grid .pw-field > input { margin-top: 0; }
+.pw-toggle { flex: 0 0 36px; display: flex; align-items: center; justify-content: center; border: 0; border-left: 1px solid var(--line); background: var(--accent-tint-06); color: var(--text-muted); cursor: pointer; border-radius: 0 var(--r-sm) var(--r-sm) 0 }
+.pw-toggle:hover { color: var(--accent); }
+.pw-toggle svg { width: 15px; height: 15px; }
+
+/* ---------- night shift module ---------- */
+.nightshift-counter { display: flex; align-items: baseline; gap: var(--s2); padding: var(--s2) 0 var(--s3); border-bottom: 1px solid var(--line) }
+.nightshift-counter b { font: 300 var(--text-display)/1 var(--font-display); color: var(--accent-bright) }
+.nightshift-counter span { color: var(--text-muted); font-size: var(--text-xs) }
+.nightshift-jobs { display: grid; gap: 2px; padding-top: var(--s2) }
+.nightshift-job { padding: 8px 2px; border-bottom: 1px solid var(--line) }
+.nightshift-job b { display: block; color: var(--text-primary); font-size: var(--text-base); font-weight: 400 }
+.nightshift-job span { display: block; color: var(--text-muted); font-size: var(--text-xs); margin-top: 3px }
+.nightshift-hint { color: var(--text-muted); font-size: var(--text-sm); line-height: 1.5; padding-top: var(--s2) }
+
+/* ---------- drag + resize grips (mechanics unchanged) ---------- */
+.module .drag-handle { cursor: move; touch-action: none }
+.edge-grip { position: absolute; z-index: 5; touch-action: none }
+.edge-grip.edge-n { top: -3px; left: 12px; right: 12px; height: 7px; cursor: ns-resize }
+.edge-grip.edge-s { bottom: -3px; left: 12px; right: 12px; height: 7px; cursor: ns-resize }
+.edge-grip.edge-e { right: -3px; top: 12px; bottom: 12px; width: 7px; cursor: ew-resize }
+.edge-grip.edge-w { left: -3px; top: 12px; bottom: 12px; width: 7px; cursor: ew-resize }
+.edge-grip.edge-ne { top: -4px; right: -4px; width: 14px; height: 14px; cursor: nesw-resize }
+.edge-grip.edge-sw { bottom: -4px; left: -4px; width: 14px; height: 14px; cursor: nesw-resize }
+.edge-grip.edge-nw { top: -4px; left: -4px; width: 14px; height: 14px; cursor: nwse-resize }
+.edge-grip.edge-se { bottom: -4px; right: -4px; width: 14px; height: 14px; cursor: nwse-resize }
+
+/* ---------- FEATURES tab (everything included, free) ---------- */
+.pro-feature-table { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0 4px }
+.pro-feature-table > div { padding: 10px 12px; border: 1px solid var(--accent-tint-20); background: var(--accent-tint-06) }
+.pro-feature-table b { display: block; margin-bottom: 6px; font-size: 11px; letter-spacing: .12em; color: var(--gold-300) }
+.pro-feature-table ul { margin: 0; padding-left: 16px; font-size: 12px; line-height: 1.7; opacity: .85 }
+
+/* â”€â”€ THE TERMINAL (stage 1) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   A JARVIS console, not a shell. --term-accent is written by the renderer
+   from the chosen orb colour, so the rain and the text wear the same
+   colourway as the sphere. */
+.module[data-module="terminal"] { --term-accent: var(--accent) }
+.module[data-module="terminal"] .module-content.term-body {
+  position: relative; display: flex; flex-direction: column;
+  padding: 0; overflow: hidden; background: rgba(0, 0, 0, .55);
+}
+.term-rain {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  z-index: 0; pointer-events: none; opacity: .62;
+}
+
+/* ── FULLSCREEN CONSOLE ──────────────────────────────────────────────────
+   The terminal stops being a panel and becomes the machine: the desk, the
+   sphere and every other module step aside, and the rain runs at 'bold'.
+   Escape always gets you out — same contract as defense mode. The module
+   carries inline left/top/width/height from the layout engine, so these
+   need !important to win; nothing else in the app does that. */
+body.terminal-full .topbar,
+body.terminal-full .jarvis-stage,
+body.terminal-full .response-dock,
+body.terminal-full #autonomy-cards,
+body.terminal-full .module:not([data-module="terminal"]) { display: none; }
+body.terminal-full .workspace { height: 100vh; }
+body.terminal-full .module[data-module="terminal"] {
+  position: fixed !important; inset: 0 !important;
+  left: 0 !important; top: 0 !important; width: 100vw !important; height: 100vh !important;
+  z-index: 58 !important; border: 0 !important; border-radius: 0 !important;
+  background: #000; backdrop-filter: none;
+}
+/* Full bleed: no glass wash between you and the rain. */
+body.terminal-full .module[data-module="terminal"] .module-content.term-body { background: transparent; }
+body.terminal-full .term-rain { opacity: .92; }
+body.terminal-full .term-log {
+  background: linear-gradient(to bottom, rgba(0,0,0,.18), rgba(0,0,0,.34));
+  font-size: 14px; line-height: 1.7; padding: 18px 26px;
+}
+body.terminal-full .term-line { grid-template-columns: 70px 62px 1fr; }
+body.terminal-full .term-input-row { padding: 14px 26px; background: rgba(0,0,0,.5); }
+body.terminal-full .term-input, body.terminal-full .term-prompt { font-size: 14px; }
+body.terminal-full .module[data-module="terminal"] .module-header {
+  background: rgba(0,0,0,.55); cursor: default;
+}
+/* Dragging or resizing a fullscreen console is meaningless. */
+body.terminal-full .module[data-module="terminal"] .edge-grip { display: none; }
+.term-exit-hint {
+  position: fixed; right: 18px; bottom: 16px; z-index: 59;
+  color: var(--term-accent, var(--accent)); opacity: .5;
+  font: 400 10px/1 var(--font-display); letter-spacing: .16em; pointer-events: none;
+}
+body:not(.terminal-full) .term-exit-hint { display: none; }
+.term-log {
+  position: relative; z-index: 1; flex: 1; min-height: 0;
+  overflow-y: auto; overflow-x: hidden;
+  padding: 10px 12px; margin: 0;
+  font-family: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+  font-size: 12px; line-height: 1.65;
+  /* Let the rain read through the text block without washing it out. */
+  background: linear-gradient(to bottom, rgba(0,0,0,.35), rgba(0,0,0,.55));
+}
+.term-line { display: grid; grid-template-columns: 58px 52px 1fr; gap: 8px; align-items: baseline }
+.term-time { color: var(--text-muted); font-variant-numeric: tabular-nums; opacity: .7 }
+.term-tag { color: var(--text-muted); letter-spacing: .1em; font-size: 10px; text-align: right }
+.term-text { color: var(--text-secondary); overflow-wrap: anywhere }
+
+.term-line.term-you .term-tag,
+.term-line.term-you .term-text { color: var(--text-primary) }
+.term-line.term-jarvis .term-tag { color: var(--term-accent) }
+.term-line.term-jarvis .term-text { color: var(--text-primary) }
+.term-line.term-agent .term-tag,
+.term-line.term-agent .term-text { color: var(--term-accent); opacity: .85 }
+.term-line.term-night .term-tag,
+.term-line.term-night .term-text { color: var(--success); opacity: .9 }
+.term-line.term-system .term-text { color: var(--text-muted); font-style: italic }
+.term-line.term-shell .term-tag { color: var(--text-muted) }
+/* pre-wrap because column layouts (dir, git status) collapse into nonsense
+   under normal HTML whitespace handling. */
+.term-line.term-shell .term-text { color: var(--text-secondary); white-space: pre-wrap }
+
+.term-input-row {
+  position: relative; z-index: 1; display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-top: 1px solid var(--line);
+  background: rgba(0, 0, 0, .6);
+}
+.term-prompt {
+  color: var(--term-accent); font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 12px; opacity: .8;
+}
+.term-input {
+  flex: 1; min-width: 0; border: 0; background: transparent; outline: none;
+  color: var(--text-primary);
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px;
+}
+.term-input::placeholder { color: var(--text-muted) }
+.term-clear {
+  font-family: var(--font-display); font-size: 9px; letter-spacing: .12em;
+  color: var(--text-muted); background: transparent; border: 1px solid var(--line);
+  border-radius: 3px; padding: 2px 6px; cursor: pointer;
+}
+.term-clear:hover { color: var(--term-accent); border-color: var(--line-accent) }
+
+/* ========================= SELF-DESTRUCT (a joke) =========================
+   Four seconds of red alert before he admits he's kidding. A fixed overlay
+   above everything (including defense mode) plus a red wash on the whole
+   window, so it reads from across the room. Pure CSS — the klaxon is
+   synthesized in renderer.js. */
+
+body.self-destruct::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 900; pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(255, 0, 0, .18) 0%, rgba(190, 0, 0, .55) 100%);
+  animation: self-destruct-flash .8s steps(1, end) infinite;
+}
+body.self-destruct::after {
+  content: 'SELF-DESTRUCT SEQUENCE ACTIVE';
+  position: fixed; top: 0; left: 0; right: 0; z-index: 901; pointer-events: none;
+  padding: 10px 0; text-align: center;
+  background: rgba(150, 0, 0, .92);
+  color: #fff; font: 600 var(--text-sm)/1 var(--font); letter-spacing: .34em;
+  box-shadow: 0 0 40px rgba(255, 40, 40, .8);
+  animation: self-destruct-flash .8s steps(1, end) infinite;
+}
+body.self-destruct .topbar,
+body.self-destruct .workspace { filter: hue-rotate(-38deg) saturate(2.4) brightness(.85); }
+
+@keyframes self-destruct-flash {
+  0% { opacity: 1 }
+  50% { opacity: .45 }
+  100% { opacity: 1 }
+}
+
+/* ============================== DEFENSE MODE ==============================
+   A posture, not a panel. body.defense hides the normal desk; the board is a
+   fixed fullscreen layer. The REAL #camera-grid is reparented into the wall,
+   so its tiles keep their own styling and live streams. */
+
+body.defense #module-layer,
+body.defense .jarvis-stage,
+body.defense .response-dock,
+body.defense #autonomy-cards { display: none; }
+
+.defense-board {
+  position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column;
+  background: #000;
+}
+.defense-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 16px;
+  background: var(--danger-tint);
+  border-bottom: 1px solid var(--danger);
+}
+.defense-banner span {
+  font-family: var(--font-display); font-size: 14px; letter-spacing: .18em;
+  color: var(--danger);
+  animation: defense-pulse 2.4s ease-in-out infinite;
+}
+@keyframes defense-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .55 } }
+.defense-banner button {
+  font-family: var(--font-display); font-size: 10px; letter-spacing: .14em;
+  color: var(--text-primary); background: transparent;
+  border: 1px solid var(--danger); border-radius: 4px; padding: 6px 12px; cursor: pointer;
+}
+.defense-banner button:hover { background: var(--danger); color: #000 }
+.defense-body { flex: 1; display: flex; gap: 12px; padding: 12px; min-height: 0; }
+.defense-wall { flex: 1; min-width: 0; overflow-y: auto; }
+.defense-wall .camera-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 12px; height: 100%; align-content: start;
+}
+.defense-rail {
+  width: 300px; flex-shrink: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.defense-rail-block {
+  border: 1px solid var(--line); border-radius: 6px; padding: 12px;
+  background: rgba(0, 0, 0, .55);
+}
+.defense-rail-block h3 {
+  margin: 0 0 8px; font-family: var(--font-display); font-size: 10px;
+  letter-spacing: .16em; color: var(--danger);
+}
+.defense-rail-block p { margin: 0 0 6px; font-size: 12px; line-height: 1.5; color: var(--text-primary); }
+#defense-alert-instruction { color: var(--text-muted); font-size: 11px; }
+#defense-headlines { margin: 0; padding: 0; list-style: none; }
+#defense-headlines li {
+  padding: 6px 0; font-size: 12px; line-height: 1.4; color: var(--text-primary);
+  border-bottom: 1px solid var(--line);
+}
+#defense-headlines li:last-child { border-bottom: 0 }
+#defense-headlines li time { display: block; font-size: 10px; color: var(--text-muted); }
+#defense-headlines .defense-none { color: var(--text-muted) }
+
+/* The announce-and-wave-off card. Sits above everything, including the board. */
+.defense-pending {
+  position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 70;
+  display: flex; align-items: center; gap: 14px; padding: 12px 18px;
+  background: rgba(0, 0, 0, .92); border: 1px solid var(--danger); border-radius: 8px;
+}
+.defense-pending strong {
+  font-family: var(--font-display); font-size: 11px; letter-spacing: .1em;
+  color: var(--text-primary); max-width: 420px;
+}
+.defense-pending span {
+  font-family: var(--font-display); font-size: 18px; color: var(--danger); min-width: 26px; text-align: center;
+}
+.defense-pending button {
+  font-family: var(--font-display); font-size: 10px; letter-spacing: .14em;
+  color: #000; background: var(--danger); border: 0; border-radius: 4px;
+  padding: 8px 14px; cursor: pointer;
+}
+
+/* Defense settings: the RSS feed list in Settings -> CAMERAS. */
+.defense-feeds { margin-top: 10px; }
+.defense-feeds-title {
+  display: block; margin-bottom: 6px; font-family: var(--font-display);
+  font-size: 10px; letter-spacing: .14em; color: var(--text-muted);
+}
+.defense-feed-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.defense-feed-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px;
+}
+.defense-feed-row span {
+  font-size: 11px; color: var(--text-primary); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.defense-feed-row button {
+  font-family: var(--font-display); font-size: 9px; letter-spacing: .12em;
+  color: var(--text-muted); background: transparent; border: 1px solid var(--line);
+  border-radius: 3px; padding: 3px 8px; cursor: pointer; flex-shrink: 0;
+}
+.defense-feed-row button:hover { color: var(--danger); border-color: var(--danger) }
+
+/* The class rules above set display, which would beat the [hidden] attribute
+   exactly like the camera sign-in bug of 2026-07-24. Never again: */
+.defense-board[hidden], .defense-pending[hidden] { display: none; }
+
+/* The red sentinel: JARVIS himself in the defense banner. The filter turns
+   whatever soul/colorway the user runs into a uniform menacing red - the
+   grayscale step normalizes gold AND obsidian before the sepia+rotate remap,
+   and it composites over WebGL (plasma) and canvas-2D skins alike. The id
+   survives cloneNode(false), so the filter survives every skin swap. */
+.defense-orb-slot { width: 64px; height: 64px; position: relative; flex-shrink: 0; }
+#defense-orb {
+  width: 100%; height: 100%; display: block;
+  filter: grayscale(1) sepia(1) saturate(5.5) hue-rotate(-46deg) brightness(1.12) contrast(1.28) drop-shadow(0 0 20px rgba(255, 30, 30, .5));
+}
+/* Three children now: orb, label, exit. Keep the label riding next to the
+   orb and push only the exit button to the far edge. */
+.defense-banner { justify-content: flex-start; }
+.defense-banner button { margin-left: auto; }
+
+
+/* ============================== THE BROWSER ==============================
+   Stage 1: surf inside JARVIS. The chrome wears the tokens; the active tab
+   underline and loading shimmer use --browser-accent, set from the orb
+   colorway by browser-ui.js (via JarvisTerminal.accentFor - one mapper). */
+
+.browser-content { display: flex; flex-direction: column; gap: 6px; }
+.browser-tabs { display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; overflow-x: auto; }
+.browser-tab {
+  display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 180px;
+  padding: 5px 8px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 5px 5px 0 0; border-bottom: 2px solid transparent;
+  background: rgba(0, 0, 0, .35); color: var(--text-muted);
+  font-size: 11px;
+}
+.browser-tab span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.browser-tab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--browser-accent, var(--gold-400));
+}
+.browser-tab.loading { border-bottom-color: var(--browser-accent, var(--gold-400)); animation: browser-loading 1s ease-in-out infinite; }
+@keyframes browser-loading { 0%, 100% { border-bottom-color: transparent } 50% { border-bottom-color: var(--browser-accent, var(--gold-400)) } }
+.browser-tab b { font-weight: 400; cursor: pointer; padding: 0 2px; }
+.browser-tab b:hover { color: var(--danger) }
+#browser-new-tab {
+  flex-shrink: 0; width: 24px; height: 24px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 5px; background: transparent; color: var(--text-muted);
+}
+#browser-new-tab:hover { color: var(--browser-accent, var(--gold-400)); border-color: var(--line-accent) }
+.browser-address { display: flex; align-items: center; gap: 4px; }
+.browser-address button {
+  width: 28px; height: 28px; cursor: pointer; font-size: 14px;
+  border: 1px solid var(--line); border-radius: 5px; background: transparent; color: var(--text-muted);
+}
+.browser-address button:disabled { opacity: .35; cursor: default }
+.browser-address button:not(:disabled):hover { color: var(--browser-accent, var(--gold-400)) }
+.browser-address input {
+  flex: 1; min-width: 0; height: 28px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 5px; background: rgba(0, 0, 0, .45);
+  color: var(--text-primary); font-size: 12px; outline: none;
+}
+.browser-address input:focus { border-color: var(--browser-accent, var(--gold-400)) }
+.browser-pages { flex: 1; min-height: 0; position: relative; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #05070a; }
+/* display:flex is load-bearing: Electron stretches the webview's internal
+   shadow iframe via flex. position:absolute blockifies the default inline-flex,
+   the stretch dies, and the page renders 150px tall (measured live, 2026-07-25). */
+.browser-pages webview, .browser-pages .browser-rig-frame { position: absolute; inset: 0; width: 100%; height: 100%; display: flex; }
+.browser-pages webview[data-active="false"], .browser-pages .browser-rig-frame[data-active="false"] { visibility: hidden; }
+.browser-empty {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  margin: 0; padding: 20px; text-align: center; color: var(--text-muted); font-size: 12px;
+}
+
+/* ---- FAMILY CALLS ------------------------------------------------------- */
+/* The JR strip above the camera grid, and the fullscreen call layer. The
+   overlay sits above the defense wall (z 60) and the toasts (z 70) — a live
+   call with the kid outranks everything else on this screen. */
+#jr-panel { display: flex; align-items: center; gap: 8px; padding: 0 0 10px; }
+#jr-panel[hidden] { display: none; }
+.jr-presence-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-muted, #666); flex: none; }
+.jr-presence-dot.online { background: #3ad06a; box-shadow: 0 0 6px rgba(58, 208, 106, .7); }
+#jr-presence-label { font-size: 12px; color: var(--text-muted, #9aa); flex: 1; }
+#jr-call-button { white-space: nowrap; }
+
+#call-overlay {
+  position: fixed; inset: 0; z-index: 950; background: rgba(2, 6, 12, .92);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+}
+#call-overlay[hidden] { display: none; }
+#call-ring { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+#call-ring[hidden] { display: none; }
+#call-ring-label { font-size: 22px; letter-spacing: .04em; margin: 0; }
+#call-ring-actions { display: flex; gap: 16px; }
+#call-stage { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 94vw; }
+#call-stage[hidden] { display: none; }
+#call-remote { max-width: 92vw; max-height: 76vh; border-radius: 10px; background: #000; }
+#call-local { position: absolute; right: 26px; bottom: 104px; width: 180px; border-radius: 8px; background: #000; }
+#call-controls { display: flex; gap: 12px; align-items: center; }
+#call-timer { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--text-muted, #9aa); min-width: 44px; }
+#call-status-line { margin: 0; font-size: 13px; color: var(--text-muted, #9aa); }
+
+/* A camera playing in its own window: the tile is a signpost, not a player, so
+   it recedes rather than looking like a dead picture. */
+.camera-tile[data-popped-out='yes'] .camera-view { opacity: 0.55; }
+.camera-tile[data-popped-out='yes'] .camera-view-empty {
+  color: var(--amber, #f5c86a);
+  letter-spacing: 0.08em;
+}
+.camera-tile[data-popped-out='yes'] .camera-live { opacity: 0.3; cursor: default; }
+
+/* Hide is the calm option above the red one, and the SHOW ALL line brings
+   hidden cameras back without a trip into settings. */
+.camera-hide { display: block; width: 100%; text-align: left; border: 0; border-radius: 6px; background: transparent; color: var(--text-dim, #cbb68a); font: 500 var(--text-xs)/1.4 var(--ui); padding: 8px 10px; cursor: pointer }
+.camera-hide:hover { background: rgba(255, 176, 32, 0.12) }
+.camera-hidden-note { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; color: var(--text-dim, #cbb68a); font: 500 var(--text-xs)/1.4 var(--ui); padding: 4px 2px }
+.camera-hidden-note .camera-show-all { border: 1px solid rgba(255, 176, 32, 0.3); border-radius: 6px; background: transparent; color: var(--amber, #f5c86a); font: inherit; padding: 3px 10px; cursor: pointer }
+.camera-hidden-note .camera-show-all:hover { background: rgba(255, 176, 32, 0.12) }

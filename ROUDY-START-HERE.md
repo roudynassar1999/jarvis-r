@@ -40,6 +40,8 @@ Your repository is public. Keep API keys, personal documents, settings exports a
 
 ## Provenance and updates
 
-All upstream tracked source/assets are preserved. Added files are this guide, the two launchers and IMPORT-PROVENANCE.json. The source's own update checker still points to the upstream author, not this repository. An upstream binary installer would be the author's build, not a new Jarvis-R release. No binary release was built here.
+This is a runnable-source subset: upstream internal plans, session handoffs, marketing drafts, PDF documentation, development tests and non-runtime build/probe scripts were excluded. Included upstream application files are unchanged. Added files are this guide, the two launchers and IMPORT-PROVENANCE.json. The source's own update checker still points to the upstream author, not this repository. An upstream binary installer would be the author's build, not a new Jarvis-R release. No binary release was built here. Installer packaging and npm test commands in the original README require the full upstream development repository.
+
+Validation on Linux of the full upstream checkout: 912 tests passed, 11 failed and 1 was skipped (924 total). Failures include Windows-specific path/process behaviour and a date-dependent test. This is not a clean test pass or a Windows runtime validation.
 
 The original README and LICENSE remain authoritative for upstream features and terms. This import is not a full security audit or a guarantee that every upstream feature works on your hardware.
